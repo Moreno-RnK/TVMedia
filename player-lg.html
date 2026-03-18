@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LG Player</title>
+  <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: #000;
+      overflow: hidden;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      position: relative;
+    }
+
+    #status {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+      padding: 10px 12px;
+      background: rgba(0, 0, 0, 0.72);
+      font-size: 14px;
+      line-height: 1.4;
+      white-space: pre-line;
+    }
+
+    #status.hidden {
+      display: none;
+    }
+
+    #content {
+      width: 100%;
+      height: 100%;
+      background: #000;
+    }
+
+    #content video,
+    #content img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      border: 0;
+      background: #000;
+    }
+
+    .message {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 30px;
+      box-sizing: border-box;
+      color: #ffd7b3;
+      font-size: 24px;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <div id="status">iniciando player LG</div>
+  <div id="content"></div>
+
+  <script>
+    (function () {
+      var CONFIG_URL = "/api/tv-config";
+      var UPDATE_INTERVAL_MS = 5 * 60 * 1000;
+      var status = document.getElementById("status");
+      var content = document.getElementById("content");
+      var currentSignature = "";
+
+      function setStatus(text, hideLater) {
+        status.textContent = text;
+        status.className = "";
+        if (hideLater) {
+          window.setTimeout(function () {
+            status.className = "hidden";
+          }, 3000);
+        }
+      }
+
+      function showMessage(text) {
+        content.innerHTML = '<div class="message">' + escapeHtml(text) + '</div>';
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      function getParam(name) {
+        var q = (window.location.search || "").replace(/^\?/, "");
+        if (!q) {
+          return "";
+        }
+
+        var parts = q.split("&");
+        for (var i = 0; i < parts.length; i++) {
+          var pair = parts[i].split("=");
+          if (pair[0] === name) {
+            return decodeURIComponent((pair[1] || "").replace(/\+/g, " "));
+          }
+        }
+        return "";
+      }
+
+      function getDeviceId() {
+        return getParam("device") || getParam("id") || "default";
+      }
+
+      function getMediaFromConfig(config, deviceId) {
+        if (!config || typeof config !== "object") {
+          return null;
+        }
+
+        var devices = config.devices && typeof config.devices === "object" ? config.devices : config;
+        var entry = devices[deviceId] || devices["default"];
+        if (!entry || !entry.media || !entry.media.url) {
+          return null;
+        }
+
+        return {
+          type: String(entry.media.type || "video").toLowerCase(),
+          url: entry.media.url,
+          label: entry.label || entry.name || deviceId,
+          version: String(entry.media.version || "0")
+        };
+      }
+
+      function fetchConfig() {
+        return fetch(CONFIG_URL + "?v=" + Date.now(), { cache: "no-store" })
+          .then(function (response) {
+            if (!response.ok) {
+              throw new Error("falha ao carregar configuracao");
+            }
+            return response.json();
+          });
+      }
+
+      function renderMedia(deviceId, media) {
+        var signature = [deviceId, media.type, media.url, media.version].join("|");
+        if (signature === currentSignature) {
+          return;
+        }
+
+        currentSignature = signature;
+        content.innerHTML = "";
+
+        if (media.type === "image") {
+          var img = document.createElement("img");
+          img.src = media.url;
+          img.alt = media.label || "Imagem";
+          img.onerror = function () {
+            showMessage("Falha ao carregar imagem");
+            setStatus("erro ao carregar imagem", false);
+          };
+          img.onload = function () {
+            setStatus("imagem carregada: " + media.label, true);
+          };
+          content.appendChild(img);
+          return;
+        }
+
+        var video = document.createElement("video");
+        video.src = media.url;
+        video.autoplay = true;
+        video.muted = true;
+        video.loop = true;
+        video.controls = false;
+        video.setAttribute("autoplay", "autoplay");
+        video.setAttribute("muted", "muted");
+        video.setAttribute("loop", "loop");
+        video.setAttribute("playsinline", "playsinline");
+        video.setAttribute("webkit-playsinline", "webkit-playsinline");
+
+        video.oncanplay = function () {
+          setStatus("video pronto: " + media.label, false);
+          try {
+            video.play();
+          } catch (error) {}
+        };
+
+        video.onplaying = function () {
+          setStatus("reproduzindo: " + media.label, true);
+        };
+
+        video.onerror = function () {
+          showMessage("Falha ao carregar video");
+          setStatus("erro ao carregar video", false);
+        };
+
+        content.appendChild(video);
+      }
+
+      function refresh() {
+        var deviceId = getDeviceId();
+        setStatus("carregando configuracao para " + deviceId, false);
+
+        fetchConfig()
+          .then(function (config) {
+            var media = getMediaFromConfig(config, deviceId);
+            if (!media) {
+              showMessage("Nenhuma midia encontrada para " + deviceId);
+              setStatus("dispositivo sem midia", false);
+              return;
+            }
+            renderMedia(deviceId, media);
+          })
+          .catch(function (error) {
+            showMessage("Falha ao carregar player LG");
+            setStatus(String(error && error.message ? error.message : error), false);
+          });
+      }
+
+      refresh();
+      window.setInterval(refresh, UPDATE_INTERVAL_MS);
+    })();
+  </script>
+</body>
+</html>
