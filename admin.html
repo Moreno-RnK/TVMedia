@@ -634,9 +634,10 @@
         setUploadState(id, "Preparando upload...", "");
 
         var safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+        var randomSuffix = Math.random().toString(36).slice(2, 10);
         var oldUrl = getCurrentMediaUrl(id);
 
-        upload("tv-media/" + id + "/" + Date.now() + "-" + safeName, file, {
+        upload("tv-media/" + id + "/" + Date.now() + "-" + randomSuffix + "-" + safeName, file, {
           access: "public",
           handleUploadUrl: UPLOAD_API_URL,
           clientPayload: password,
