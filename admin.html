@@ -33,7 +33,7 @@
     }
 
     .page {
-      max-width: 1200px;
+      max-width: 1260px;
       margin: 0 auto;
       padding: 32px 20px 60px;
     }
@@ -61,7 +61,8 @@
     .hero p,
     .hint,
     .meta,
-    .status {
+    .status,
+    .upload-state {
       color: var(--muted);
     }
 
@@ -80,7 +81,7 @@
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
       gap: 16px;
     }
 
@@ -148,7 +149,7 @@
     }
 
     textarea {
-      min-height: 160px;
+      min-height: 170px;
       resize: vertical;
     }
 
@@ -162,6 +163,12 @@
 
     button:hover {
       transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
     }
 
     .primary {
@@ -202,6 +209,23 @@
       max-width: 220px;
     }
 
+    .upload-panel {
+      margin-top: 14px;
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .upload-panel input[type="file"] {
+      padding: 8px;
+    }
+
+    .upload-state {
+      font-size: 12px;
+      min-height: 16px;
+    }
+
     @media (max-width: 720px) {
       .toolbar .status {
         margin-left: 0;
@@ -219,8 +243,8 @@
   <div class="page">
     <section class="hero">
       <h1>Painel das TVs</h1>
-      <p>Gerencie as TVs online pelo Vercel, sem editar codigo. O painel salva a configuracao das TVs e o player web busca as alteracoes automaticamente.</p>
-      <div class="hint">Para cada TV, abra uma vez algo como <code>index.html?device=tv-sala</code>. O navegador da TV guarda esse ID localmente para as proximas aberturas.</div>
+      <p>A pessoa pode subir video ou imagem direto pela interface, salvar online e a TV busca tudo automaticamente.</p>
+      <div class="hint">Para cada TV, abra uma vez <code>index.html?device=tv-sala</code>. O navegador guarda o ID e tenta manter a midia em cache local para uso offline.</div>
     </section>
 
     <section class="toolbar">
@@ -268,9 +292,13 @@
     </section>
   </div>
 
-  <script>
+  <script type="module">
+    import { upload } from "https://esm.sh/@vercel/blob/client";
+
     (function () {
       var ADMIN_API_URL = "/api/tv-admin-config";
+      var DELETE_API_URL = "/api/tv-media-delete";
+      var UPLOAD_API_URL = "/api/tv-upload";
       var PUBLIC_CONFIG_FALLBACK_URL = "tv-config.json";
       var PASSWORD_STORAGE_KEY = "wall-tv-admin-password";
       var config = { devices: {} };
@@ -323,6 +351,7 @@
 
         entries.forEach(function (id) {
           var device = config.devices[id];
+          var media = device.media || {};
           var card = document.createElement("div");
           card.className = "device-card";
           card.innerHTML =
@@ -338,16 +367,24 @@
                 { value: "tv", label: "TV" },
                 { value: "outro", label: "Outro" }
               ]) +
-              selectField("Tipo de midia", (device.media && device.media.type) || "video", "media.type", [
+              selectField("Tipo de midia", media.type || "video", "media.type", [
                 { value: "video", label: "Video" },
                 { value: "image", label: "Imagem" }
               ]) +
-              field("URL da midia", (device.media && device.media.url) || "", "media.url") +
-              field("Poster opcional", (device.media && device.media.poster) || "", "media.poster") +
-              field("Versao", String((device.media && device.media.version) || "1"), "media.version") +
+              field("URL da midia", media.url || "", "media.url") +
+              field("Poster opcional", media.poster || "", "media.poster") +
+              field("Versao", String(media.version || "1"), "media.version") +
+            "</div>" +
+            '<div class="upload-panel">' +
+              '<label>Enviar arquivo de video ou imagem<input type="file" data-upload-input="' + escapeHtml(id) + '" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"></label>' +
+              '<div class="upload-state" data-upload-state="' + escapeHtml(id) + '">Nenhum upload em andamento.</div>' +
+              '<div class="actions">' +
+                '<button class="secondary" data-action="upload" data-id="' + escapeHtml(id) + '">Fazer upload</button>' +
+                '<button class="secondary" data-action="clear-media" data-id="' + escapeHtml(id) + '">Limpar midia</button>' +
+              '</div>' +
             "</div>" +
             '<div class="actions">' +
-              '<button class="danger" data-action="remove" data-id="' + escapeHtml(id) + '">Remover</button>' +
+              '<button class="danger" data-action="remove" data-id="' + escapeHtml(id) + '">Remover TV</button>' +
             "</div>";
 
           wireInputs(card, id);
@@ -373,6 +410,8 @@
       function wireInputs(card, id) {
         var inputs = card.querySelectorAll("[data-key]");
         var removeBtn = card.querySelector('[data-action="remove"]');
+        var uploadBtn = card.querySelector('[data-action="upload"]');
+        var clearMediaBtn = card.querySelector('[data-action="clear-media"]');
 
         inputs.forEach(function (input) {
           input.addEventListener("input", function () {
@@ -384,9 +423,15 @@
         });
 
         removeBtn.addEventListener("click", function () {
-          delete config.devices[id];
-          render();
-          setStatus("TV removida", "success");
+          removeDevice(id);
+        });
+
+        uploadBtn.addEventListener("click", function () {
+          uploadDeviceMedia(id, uploadBtn);
+        });
+
+        clearMediaBtn.addEventListener("click", function () {
+          clearDeviceMedia(id);
         });
       }
 
@@ -430,9 +475,11 @@
       }
 
       function storePassword() {
+        var password = getPassword();
         try {
-          window.sessionStorage.setItem(PASSWORD_STORAGE_KEY, getPassword());
+          window.sessionStorage.setItem(PASSWORD_STORAGE_KEY, password);
         } catch (error) {}
+        document.cookie = "tv_admin_password=" + encodeURIComponent(password) + "; path=/; SameSite=Strict; Secure";
       }
 
       function restorePassword() {
@@ -440,11 +487,12 @@
           var saved = window.sessionStorage.getItem(PASSWORD_STORAGE_KEY) || "";
           if (saved) {
             passwordInput.value = saved;
+            storePassword();
           }
         } catch (error) {}
       }
 
-      function requestOptions(method, includeBody) {
+      function getHeaders(includeBody) {
         var password = getPassword();
         if (!password) {
           throw new Error("Informe a senha do painel");
@@ -452,19 +500,15 @@
 
         storePassword();
 
-        var options = {
-          method: method,
-          headers: {
-            "Authorization": "Bearer " + password
-          }
+        var headers = {
+          "Authorization": "Bearer " + password
         };
 
         if (includeBody) {
-          options.headers["Content-Type"] = "application/json";
-          options.body = JSON.stringify(config);
+          headers["Content-Type"] = "application/json";
         }
 
-        return options;
+        return headers;
       }
 
       function parseApiResponse(response) {
@@ -476,6 +520,19 @@
           }
           return data;
         });
+      }
+
+      function requestJson(url, method, body) {
+        var options = {
+          method: method,
+          headers: getHeaders(Boolean(body))
+        };
+
+        if (body) {
+          options.body = JSON.stringify(body);
+        }
+
+        return fetch(url, options).then(parseApiResponse);
       }
 
       function loadFallbackConfig(reason) {
@@ -497,16 +554,7 @@
       }
 
       function loadRemote() {
-        var options;
-
-        try {
-          options = requestOptions("GET", false);
-        } catch (error) {
-          return loadFallbackConfig(error.message || String(error));
-        }
-
-        return fetch(ADMIN_API_URL, options)
-          .then(parseApiResponse)
+        return requestJson(ADMIN_API_URL, "GET")
           .then(function (data) {
             config = ensureShape(data);
             render();
@@ -518,21 +566,159 @@
       }
 
       function saveRemote() {
-        var options;
-
-        try {
-          options = requestOptions("POST", true);
-        } catch (error) {
-          setStatus(error.message || String(error), "error");
-          return;
-        }
-
-        fetch(ADMIN_API_URL, options)
-          .then(parseApiResponse)
+        requestJson(ADMIN_API_URL, "POST", config)
           .then(function (data) {
             config = ensureShape(data);
             render();
             setStatus("Configuracao salva online", "success");
+          })
+          .catch(function (error) {
+            setStatus(error.message || String(error), "error");
+          });
+      }
+
+      function getUploadStateElement(id) {
+        return document.querySelector('[data-upload-state="' + cssEscape(id) + '"]');
+      }
+
+      function getUploadInputElement(id) {
+        return document.querySelector('[data-upload-input="' + cssEscape(id) + '"]');
+      }
+
+      function setUploadState(id, message, tone) {
+        var element = getUploadStateElement(id);
+        if (!element) {
+          return;
+        }
+        element.textContent = message;
+        element.style.color = tone === "error" ? "#a12c2c" : tone === "success" ? "#1d7b4b" : "";
+      }
+
+      function cssEscape(value) {
+        return String(value).replace(/"/g, '\\"');
+      }
+
+      function getCurrentMediaUrl(id) {
+        return config.devices[id] && config.devices[id].media ? config.devices[id].media.url || "" : "";
+      }
+
+      function removeBlobIfManaged(url) {
+        if (!url) {
+          return Promise.resolve();
+        }
+
+        return requestJson(DELETE_API_URL, "POST", { url: url }).catch(function () {
+          return {};
+        });
+      }
+
+      function uploadDeviceMedia(id, button) {
+        var input = getUploadInputElement(id);
+        var file = input && input.files ? input.files[0] : null;
+
+        if (!file) {
+          setStatus("Selecione um arquivo antes do upload", "error");
+          setUploadState(id, "Selecione um arquivo para enviar.", "error");
+          return;
+        }
+
+        var password = getPassword();
+        if (!password) {
+          setStatus("Informe a senha do painel", "error");
+          setUploadState(id, "Informe a senha para enviar arquivos.", "error");
+          return;
+        }
+
+        storePassword();
+        button.disabled = true;
+        setUploadState(id, "Preparando upload...", "");
+
+        var safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+        var oldUrl = getCurrentMediaUrl(id);
+
+        upload("tv-media/" + id + "/" + Date.now() + "-" + safeName, file, {
+          access: "public",
+          handleUploadUrl: UPLOAD_API_URL,
+          onUploadProgress: function (progressEvent) {
+            if (progressEvent && typeof progressEvent.percentage === "number") {
+              setUploadState(id, "Upload " + Math.round(progressEvent.percentage) + "%", "");
+            }
+          }
+        })
+          .then(function (blob) {
+            if (!config.devices[id].media) {
+              config.devices[id].media = {};
+            }
+
+            config.devices[id].media.url = blob.url;
+            config.devices[id].media.type = file.type.indexOf("image/") === 0 ? "image" : "video";
+            config.devices[id].media.version = String(Date.now());
+            jsonPreview.value = JSON.stringify(config, null, 2);
+
+            return saveRemoteAfterUpload(id, oldUrl, blob.url);
+          })
+          .then(function () {
+            if (input) {
+              input.value = "";
+            }
+            setUploadState(id, "Upload concluido e salvo online.", "success");
+          })
+          .catch(function (error) {
+            setUploadState(id, error.message || String(error), "error");
+            setStatus(error.message || String(error), "error");
+          })
+          .finally(function () {
+            button.disabled = false;
+          });
+      }
+
+      function saveRemoteAfterUpload(id, oldUrl, newUrl) {
+        return requestJson(ADMIN_API_URL, "POST", config)
+          .then(function (data) {
+            config = ensureShape(data);
+            render();
+            setStatus("Arquivo enviado e configuracao salva", "success");
+            if (oldUrl && oldUrl !== newUrl) {
+              return removeBlobIfManaged(oldUrl);
+            }
+          });
+      }
+
+      function clearDeviceMedia(id) {
+        var existingUrl = getCurrentMediaUrl(id);
+
+        if (!config.devices[id].media) {
+          config.devices[id].media = {};
+        }
+
+        config.devices[id].media.url = "";
+        config.devices[id].media.poster = "";
+        config.devices[id].media.version = String(Date.now());
+        render();
+
+        requestJson(ADMIN_API_URL, "POST", config)
+          .then(function (data) {
+            config = ensureShape(data);
+            render();
+            setStatus("Midia removida da TV", "success");
+            return removeBlobIfManaged(existingUrl);
+          })
+          .catch(function (error) {
+            setStatus(error.message || String(error), "error");
+          });
+      }
+
+      function removeDevice(id) {
+        var existingUrl = getCurrentMediaUrl(id);
+        delete config.devices[id];
+        render();
+
+        requestJson(ADMIN_API_URL, "POST", config)
+          .then(function (data) {
+            config = ensureShape(data);
+            render();
+            setStatus("TV removida", "success");
+            return removeBlobIfManaged(existingUrl);
           })
           .catch(function (error) {
             setStatus(error.message || String(error), "error");
@@ -562,7 +748,7 @@
         document.getElementById("newId").value = "";
         document.getElementById("newName").value = "";
         render();
-        setStatus("TV adicionada", "success");
+        setStatus("TV adicionada. Agora voce pode enviar um arquivo.", "success");
       });
 
       passwordInput.addEventListener("change", storePassword);

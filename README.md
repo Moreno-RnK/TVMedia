@@ -5,7 +5,7 @@ Esta pasta contem apenas a versao web das TVs.
 ## Arquivos principais
 
 - `index.html`: player da TV
-- `admin.html`: painel de gestao online
+- `admin.html`: painel de gestao online com upload de video/imagem
 - `tv-config.json`: fallback local
 - `api/`: funcoes serverless do Vercel
 
@@ -23,3 +23,14 @@ Esta pasta contem apenas a versao web das TVs.
 - Player de uma TV: `/index.html?device=tv-sala`
 
 Na primeira abertura, a TV guarda esse ID no navegador.
+
+## Offline
+
+- O player tenta baixar a midia e guardar no navegador da TV.
+- Se a internet cair, ele tenta usar a copia local.
+- Para esse cache funcionar bem, a midia deve estar no mesmo projeto do Vercel ou em uma origem com CORS liberado.
+
+## Upload de arquivos
+
+- O painel envia video e imagem direto para o Vercel Blob.
+- Depois do upload, a configuracao da TV e salva online automaticamente.

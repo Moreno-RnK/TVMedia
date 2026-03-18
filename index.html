@@ -68,16 +68,23 @@
       var CONFIG_URL = "/api/tv-config";
       var CONFIG_FALLBACK_URL = "tv-config.json";
       var DEVICE_STORAGE_KEY = "wall-player-device-id";
+      var CONFIG_STORAGE_PREFIX = "wall-player-config:";
+      var MEDIA_META_PREFIX = "wall-player-media:";
+      var MEDIA_CACHE_NAME = "wall-player-media-v1";
+      var UPDATE_INTERVAL_MS = 5 * 60 * 1000;
+      var activeObjectUrl = "";
+      var currentSignature = "";
+
       var legacyMediaMap = {
-        1: { type: "video", src: "media/videocar.mp4", label: "Tablet 1", poster: "media/poster1.jpg" },
-        2: { type: "image", src: "media/imagem2.jpg", label: "Tablet 2" },
-        3: { type: "image", src: "media/imagem3.jpg", label: "Tablet 3" },
-        4: { type: "image", src: "media/imagem4.jpg", label: "Tablet 4" },
-        5: { type: "image", src: "media/imagem5.jpg", label: "Tablet 5" },
-        6: { type: "image", src: "media/imagem6.jpg", label: "Tablet 6" },
-        7: { type: "video", src: "media/videocar.mp4", label: "Tablet 7", poster: "media/poster7.jpg" },
-        8: { type: "image", src: "media/imagem8.jpg", label: "Tablet 8" },
-        9: { type: "image", src: "media/imagem9.jpg", label: "Tablet 9" }
+        1: { type: "video", src: "media/videocar.mp4", label: "Tablet 1", poster: "media/poster1.jpg", version: "1" },
+        2: { type: "image", src: "media/imagem2.jpg", label: "Tablet 2", version: "1" },
+        3: { type: "image", src: "media/imagem3.jpg", label: "Tablet 3", version: "1" },
+        4: { type: "image", src: "media/imagem4.jpg", label: "Tablet 4", version: "1" },
+        5: { type: "image", src: "media/imagem5.jpg", label: "Tablet 5", version: "1" },
+        6: { type: "image", src: "media/imagem6.jpg", label: "Tablet 6", version: "1" },
+        7: { type: "video", src: "media/videocar.mp4", label: "Tablet 7", poster: "media/poster7.jpg", version: "1" },
+        8: { type: "image", src: "media/imagem8.jpg", label: "Tablet 8", version: "1" },
+        9: { type: "image", src: "media/imagem9.jpg", label: "Tablet 9", version: "1" }
       };
 
       var status = document.getElementById("status");
@@ -171,11 +178,57 @@
         }
       }
 
+      function getConfigStorageKey(deviceId) {
+        return CONFIG_STORAGE_PREFIX + deviceId;
+      }
+
+      function getMediaMetaKey(deviceId) {
+        return MEDIA_META_PREFIX + deviceId;
+      }
+
+      function saveDeviceConfig(deviceId, media) {
+        try {
+          window.localStorage.setItem(getConfigStorageKey(deviceId), JSON.stringify(media));
+        } catch (error) {}
+      }
+
+      function loadDeviceConfig(deviceId) {
+        try {
+          var raw = window.localStorage.getItem(getConfigStorageKey(deviceId));
+          return raw ? JSON.parse(raw) : null;
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function saveMediaMeta(deviceId, meta) {
+        try {
+          window.localStorage.setItem(getMediaMetaKey(deviceId), JSON.stringify(meta));
+        } catch (error) {}
+      }
+
+      function loadMediaMeta(deviceId) {
+        try {
+          var raw = window.localStorage.getItem(getMediaMetaKey(deviceId));
+          return raw ? JSON.parse(raw) : null;
+        } catch (error) {
+          return null;
+        }
+      }
+
       function clearContent() {
         content.innerHTML = "";
       }
 
+      function clearActiveObjectUrl() {
+        if (activeObjectUrl) {
+          URL.revokeObjectURL(activeObjectUrl);
+          activeObjectUrl = "";
+        }
+      }
+
       function showMessage(message) {
+        clearActiveObjectUrl();
         clearContent();
 
         var box = document.createElement("div");
@@ -197,6 +250,7 @@
 
       function showImage(item) {
         clearContent();
+        clearActiveObjectUrl();
 
         var img = document.createElement("img");
         img.src = item.src;
@@ -204,6 +258,10 @@
         img.onerror = function () {
           showMessage("Imagem nao carregou: " + item.src);
         };
+
+        if (item._blobUrl) {
+          activeObjectUrl = item.src;
+        }
 
         content.appendChild(img);
 
@@ -214,7 +272,7 @@
         if (item.label) {
           lines.push(item.label);
         }
-        lines.push("imagem carregando: " + item.src);
+        lines.push(item._source === "cache" ? "imagem local pronta" : "imagem online");
 
         logStatus(lines);
         hideStatusLater(3000);
@@ -264,6 +322,7 @@
 
       function showVideo(item) {
         clearContent();
+        clearActiveObjectUrl();
 
         var video = document.createElement("video");
         var support = canPlayMp4();
@@ -281,6 +340,10 @@
         video.setAttribute("playsinline", "playsinline");
         video.setAttribute("webkit-playsinline", "webkit-playsinline");
 
+        if (item._blobUrl) {
+          activeObjectUrl = item.src;
+        }
+
         if (item.poster) {
           video.poster = item.poster;
         }
@@ -289,7 +352,7 @@
           logStatus([
             "dispositivo " + item._tablet,
             item.label,
-            "video src: " + item.src,
+            item._source === "cache" ? "video local pronto" : "video online",
             "canPlayType(mp4): " + support.plain,
             "canPlayType(avc1/mp4a): " + support.codecs,
             "iniciando..."
@@ -340,7 +403,7 @@
           logStatus([
             "dispositivo " + item._tablet,
             item.label,
-            "reproduzindo"
+            item._source === "cache" ? "reproduzindo local" : "reproduzindo online"
           ]);
           hideStatusLater(3000);
         };
@@ -458,20 +521,171 @@
           });
       }
 
+      function makeCacheKey(deviceId, media) {
+        return "https://wall-player.local/media/" + encodeURIComponent(deviceId) +
+          "?version=" + encodeURIComponent(String(media.version || "0")) +
+          "&src=" + encodeURIComponent(String(media.src || ""));
+      }
+
+      function openMediaCache() {
+        if (!("caches" in window)) {
+          throw new Error("Cache Storage nao suportado neste navegador");
+        }
+        return window.caches.open(MEDIA_CACHE_NAME);
+      }
+
+      function readCachedBlobUrl(cacheKey) {
+        return openMediaCache()
+          .then(function (cache) {
+            return cache.match(cacheKey);
+          })
+          .then(function (response) {
+            if (!response) {
+              return "";
+            }
+            return response.blob();
+          })
+          .then(function (blob) {
+            if (!blob) {
+              return "";
+            }
+            return URL.createObjectURL(blob);
+          });
+      }
+
+      function downloadAndCacheMedia(deviceId, media) {
+        var cacheKey = makeCacheKey(deviceId, media);
+
+        return fetch(media.src, { cache: "no-store" })
+          .then(function (response) {
+            if (!response.ok) {
+              throw new Error("Falha ao baixar a midia");
+            }
+
+            return openMediaCache().then(function (cache) {
+              return cache.put(cacheKey, response.clone()).then(function () {
+                var meta = {
+                  cacheKey: cacheKey,
+                  version: String(media.version || "0"),
+                  src: media.src,
+                  type: media.type || "video",
+                  savedAt: Date.now()
+                };
+                saveMediaMeta(deviceId, meta);
+                return meta;
+              });
+            });
+          });
+      }
+
+      function getCachedPlaybackItem(deviceId, media) {
+        var meta = loadMediaMeta(deviceId);
+        var expectedKey = makeCacheKey(deviceId, media);
+
+        if (!meta || meta.cacheKey !== expectedKey) {
+          return Promise.resolve(null);
+        }
+
+        return readCachedBlobUrl(meta.cacheKey).then(function (blobUrl) {
+          if (!blobUrl) {
+            return null;
+          }
+
+          return {
+            type: media.type,
+            src: blobUrl,
+            label: media.label,
+            poster: media.poster || "",
+            version: media.version,
+            _source: "cache",
+            _blobUrl: true
+          };
+        });
+      }
+
+      function buildNetworkPlaybackItem(media) {
+        return {
+          type: media.type,
+          src: media.src,
+          label: media.label,
+          poster: media.poster || "",
+          version: media.version,
+          _source: "network"
+        };
+      }
+
+      function resolvePlayableMedia(deviceId, media, allowDownload) {
+        var normalized = cloneMedia(media);
+
+        return getCachedPlaybackItem(deviceId, normalized)
+          .then(function (cachedItem) {
+            if (cachedItem) {
+              return cachedItem;
+            }
+
+            if (!allowDownload) {
+              throw new Error("Midia local indisponivel");
+            }
+
+            return downloadAndCacheMedia(deviceId, normalized)
+              .then(function () {
+                return getCachedPlaybackItem(deviceId, normalized);
+              })
+              .then(function (downloadedItem) {
+                if (downloadedItem) {
+                  return downloadedItem;
+                }
+                return buildNetworkPlaybackItem(normalized);
+              })
+              .catch(function () {
+                return buildNetworkPlaybackItem(normalized);
+              });
+          })
+          .catch(function () {
+            if (allowDownload) {
+              return buildNetworkPlaybackItem(normalized);
+            }
+            throw new Error("Sem midia local para reproduzir");
+          });
+      }
+
       function loadMedia(deviceId) {
+        var onlineMedia = null;
+
         return fetchJson(CONFIG_URL)
           .catch(function () {
             return fetchJson(CONFIG_FALLBACK_URL);
           })
           .then(function (config) {
-            return resolveConfigMedia(config, deviceId) || resolveLegacyMedia(deviceId);
+            onlineMedia = resolveConfigMedia(config, deviceId) || resolveLegacyMedia(deviceId);
+            if (onlineMedia) {
+              saveDeviceConfig(deviceId, onlineMedia);
+              return resolvePlayableMedia(deviceId, onlineMedia, true);
+            }
+            throw new Error("Dispositivo nao configurado");
           })
           .catch(function () {
-            return resolveLegacyMedia(deviceId);
+            var savedMedia = loadDeviceConfig(deviceId) || resolveLegacyMedia(deviceId);
+            if (!savedMedia) {
+              throw new Error("Sem configuracao local disponivel");
+            }
+            return resolvePlayableMedia(deviceId, savedMedia, false);
           });
       }
 
-      function main() {
+      function buildSignature(deviceId, media) {
+        return [
+          deviceId,
+          media.type || "",
+          media.src || "",
+          media.version || "",
+          media.label || "",
+          media.poster || "",
+          media._source || ""
+        ].join("|");
+      }
+
+      function refreshPlayback() {
         var deviceId = detectDeviceId();
 
         loadMedia(deviceId)
@@ -483,6 +697,13 @@
             }
 
             media._tablet = deviceId;
+
+            var signature = buildSignature(deviceId, media);
+            if (signature === currentSignature) {
+              return;
+            }
+
+            currentSignature = signature;
 
             if (media.type === "video") {
               showVideo(media);
@@ -496,7 +717,8 @@
           });
       }
 
-      main();
+      refreshPlayback();
+      window.setInterval(refreshPlayback, UPDATE_INTERVAL_MS);
     })();
   </script>
 </body>
