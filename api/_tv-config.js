@@ -50,6 +50,7 @@ export async function saveTvConfig(config) {
   await put(CONFIG_PATH, JSON.stringify(normalized, null, 2), {
     access: "public",
     addRandomSuffix: false,
+    allowOverwrite: true,
     contentType: "application/json; charset=utf-8"
   });
   return normalized;
