@@ -28,6 +28,9 @@
       line-height: 1.4;
       white-space: pre-line;
     }
+    #status.hidden {
+      display: none;
+    }
     #content, #content img, #content video {
       width: 100%;
       height: 100%;
@@ -63,6 +66,13 @@
 
       function setStatus(text) {
         status.textContent = text;
+        status.className = "";
+      }
+
+      function hideStatusLater(ms) {
+        window.setTimeout(function () {
+          status.className = "hidden";
+        }, ms || 2000);
       }
 
       function getParam(name) {
@@ -106,7 +116,10 @@
 
         if (media.type === "image") {
           var img = document.createElement("img");
-          img.onload = function () { setStatus("imagem carregada: " + media.label); };
+          img.onload = function () {
+            setStatus("imagem carregada: " + media.label);
+            hideStatusLater(2000);
+          };
           img.onerror = function () { setStatus("erro ao carregar imagem"); showMessage("Falha ao carregar imagem"); };
           img.src = media.url;
           content.appendChild(img);
@@ -128,6 +141,7 @@
         };
         video.onplaying = function () {
           setStatus("reproduzindo: " + media.label);
+          hideStatusLater(2000);
         };
         video.onerror = function () {
           setStatus("erro ao carregar video");
