@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LG Player Legacy</title>
+  <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: #000;
+      overflow: hidden;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+    body { position: relative; }
+    #status {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+      padding: 10px 12px;
+      background: rgba(0, 0, 0, 0.72);
+      font-size: 14px;
+      line-height: 1.4;
+      white-space: pre-line;
+    }
+    #content, #content img, #content video {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+      border: 0;
+      background: #000;
+    }
+    .message {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: #ffd7b3;
+      font-size: 24px;
+      padding: 30px;
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+  <div id="status">iniciando player LG legacy</div>
+  <div id="content"></div>
+  <script>
+    (function () {
+      var CONFIG_URL = "https://tv-media.vercel.app/api/tv-config";
+      var UPDATE_INTERVAL_MS = 5 * 60 * 1000;
+      var status = document.getElementById("status");
+      var content = document.getElementById("content");
+      var currentSignature = "";
+
+      function setStatus(text) {
+        status.textContent = text;
+      }
+
+      function getParam(name) {
+        var q = (window.location.search || "").replace(/^\?/, "");
+        if (!q) return "";
+        var parts = q.split("&");
+        for (var i = 0; i < parts.length; i++) {
+          var pair = parts[i].split("=");
+          if (pair[0] === name) {
+            return decodeURIComponent((pair[1] || "").replace(/\+/g, " "));
+          }
+        }
+        return "";
+      }
+
+      function showMessage(text) {
+        content.innerHTML = '<div class="message">' + text + '</div>';
+      }
+
+      function getDeviceId() {
+        return getParam("device") || getParam("id") || "default";
+      }
+
+      function parseMedia(config, deviceId) {
+        var devices = config && config.devices ? config.devices : config;
+        var entry = devices && (devices[deviceId] || devices["default"]);
+        if (!entry || !entry.media || !entry.media.url) return null;
+        return {
+          type: String(entry.media.type || "video").toLowerCase(),
+          url: String(entry.media.url || ""),
+          label: entry.label || entry.name || deviceId,
+          version: String(entry.media.version || "0")
+        };
+      }
+
+      function renderMedia(deviceId, media) {
+        var signature = [deviceId, media.type, media.url, media.version].join("|");
+        if (signature === currentSignature) return;
+        currentSignature = signature;
+        content.innerHTML = "";
+
+        if (media.type === "image") {
+          var img = document.createElement("img");
+          img.onload = function () { setStatus("imagem carregada: " + media.label); };
+          img.onerror = function () { setStatus("erro ao carregar imagem"); showMessage("Falha ao carregar imagem"); };
+          img.src = media.url;
+          content.appendChild(img);
+          return;
+        }
+
+        var video = document.createElement("video");
+        video.src = media.url;
+        video.autoplay = true;
+        video.muted = true;
+        video.loop = true;
+        video.controls = false;
+        video.setAttribute("autoplay", "autoplay");
+        video.setAttribute("muted", "muted");
+        video.setAttribute("loop", "loop");
+        video.setAttribute("playsinline", "playsinline");
+        video.oncanplay = function () {
+          setStatus("video pronto: " + media.label);
+          try { video.play(); } catch (e) {}
+        };
+        video.onplaying = function () {
+          setStatus("reproduzindo: " + media.label);
+        };
+        video.onerror = function () {
+          setStatus("erro ao carregar video");
+          showMessage("Falha ao carregar video");
+        };
+        content.appendChild(video);
+      }
+
+      function loadConfig(callback, onError) {
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", CONFIG_URL + "?v=" + new Date().getTime(), true);
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState !== 4) return;
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              callback(JSON.parse(xhr.responseText));
+            } catch (error) {
+              onError("erro ao interpretar configuracao");
+            }
+          } else {
+            onError("erro ao carregar configuracao (" + xhr.status + ")");
+          }
+        };
+        xhr.onerror = function () {
+          onError("falha de rede ao carregar configuracao");
+        };
+        xhr.send();
+      }
+
+      function refresh() {
+        var deviceId = getDeviceId();
+        setStatus("carregando configuracao para " + deviceId);
+        loadConfig(function (config) {
+          var media = parseMedia(config, deviceId);
+          if (!media) {
+            setStatus("nenhuma midia encontrada");
+            showMessage("Nenhuma midia encontrada para " + deviceId);
+            return;
+          }
+          renderMedia(deviceId, media);
+        }, function (message) {
+          setStatus(message);
+          showMessage("Falha ao carregar player LG");
+        });
+      }
+
+      refresh();
+      window.setInterval(refresh, UPDATE_INTERVAL_MS);
+    })();
+  </script>
+</body>
+</html>
