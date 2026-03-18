@@ -117,11 +117,10 @@
         video.src = media.url;
         video.autoplay = true;
         video.muted = true;
-        video.loop = true;
         video.controls = false;
+        video.preload = "auto";
         video.setAttribute("autoplay", "autoplay");
         video.setAttribute("muted", "muted");
-        video.setAttribute("loop", "loop");
         video.setAttribute("playsinline", "playsinline");
         video.oncanplay = function () {
           setStatus("video pronto: " + media.label);
@@ -133,6 +132,12 @@
         video.onerror = function () {
           setStatus("erro ao carregar video");
           showMessage("Falha ao carregar video");
+        };
+        video.onended = function () {
+          try {
+            video.currentTime = 0;
+            video.play();
+          } catch (e) {}
         };
         content.appendChild(video);
       }
