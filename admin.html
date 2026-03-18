@@ -638,7 +638,6 @@
 
         upload("tv-media/" + id + "/" + Date.now() + "-" + safeName, file, {
           access: "public",
-          addRandomSuffix: true,
           handleUploadUrl: UPLOAD_API_URL,
           clientPayload: password,
           onUploadProgress: function (progressEvent) {
