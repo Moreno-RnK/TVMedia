@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel das TVs</title>
+  <style>
+    :root {
+      --bg: #f3efe7;
+      --panel: #fffaf2;
+      --panel-strong: #ffffff;
+      --ink: #22201c;
+      --muted: #70685f;
+      --accent: #ad3f28;
+      --accent-soft: #f2d5cd;
+      --border: #dccfbe;
+      --success: #1d7b4b;
+      --danger: #a12c2c;
+      --shadow: 0 18px 40px rgba(34, 32, 28, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(173, 63, 40, 0.12), transparent 30%),
+        linear-gradient(180deg, #f7f1e8 0%, #efe7db 100%);
+      color: var(--ink);
+    }
+
+    .page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+    }
+
+    .hero,
+    .toolbar,
+    .editor {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      padding: 28px;
+      margin-bottom: 20px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1;
+    }
+
+    .hero p,
+    .hint,
+    .meta,
+    .status {
+      color: var(--muted);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 18px;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+
+    .editor {
+      padding: 22px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .device-card,
+    .new-device {
+      background: var(--panel-strong);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+    }
+
+    .device-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .device-head strong {
+      font-size: 18px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .fields {
+      display: grid;
+      gap: 10px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    input,
+    select,
+    textarea,
+    button {
+      font: inherit;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    textarea {
+      min-height: 160px;
+      resize: vertical;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 16px;
+      cursor: pointer;
+      transition: transform 0.18s ease, opacity 0.18s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    .primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .secondary {
+      background: #e9dece;
+      color: var(--ink);
+    }
+
+    .danger {
+      background: #f6d7d7;
+      color: var(--danger);
+    }
+
+    .toolbar .status {
+      margin-left: auto;
+      min-width: 220px;
+      text-align: right;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .raw-json {
+      margin-top: 24px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .toolbar input {
+      max-width: 220px;
+    }
+
+    @media (max-width: 720px) {
+      .toolbar .status {
+        margin-left: 0;
+        text-align: left;
+        min-width: 0;
+      }
+
+      .toolbar input {
+        max-width: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <h1>Painel das TVs</h1>
+      <p>Gerencie as TVs online pelo Vercel, sem editar codigo. O painel salva a configuracao das TVs e o player web busca as alteracoes automaticamente.</p>
+      <div class="hint">Para cada TV, abra uma vez algo como <code>index.html?device=tv-sala</code>. O navegador da TV guarda esse ID localmente para as proximas aberturas.</div>
+    </section>
+
+    <section class="toolbar">
+      <input id="passwordInput" type="password" placeholder="Senha do painel">
+      <button class="secondary" id="loadRemoteBtn">Carregar online</button>
+      <button class="primary" id="saveRemoteBtn">Salvar online</button>
+      <button class="secondary" id="downloadBtn">Baixar backup JSON</button>
+      <div class="status" id="status">Pronto para editar</div>
+    </section>
+
+    <section class="editor">
+      <div class="grid" id="deviceList"></div>
+
+      <div class="new-device">
+        <div class="device-head">
+          <strong>Nova TV</strong>
+          <span class="badge">Adicionar</span>
+        </div>
+        <div class="fields">
+          <label>
+            ID da TV
+            <input id="newId" placeholder="Ex.: tv-sala">
+          </label>
+          <label>
+            Nome interno
+            <input id="newName" placeholder="Ex.: TV Sala">
+          </label>
+          <label>
+            Tipo
+            <select id="newDeviceType">
+              <option value="tv">TV</option>
+              <option value="outro">Outro</option>
+            </select>
+          </label>
+        </div>
+        <div class="actions">
+          <button class="primary" id="addDeviceBtn">Adicionar TV</button>
+        </div>
+      </div>
+
+      <div class="raw-json">
+        <label for="jsonPreview">Preview do JSON das TVs</label>
+        <textarea id="jsonPreview" readonly></textarea>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      var ADMIN_API_URL = "/api/tv-admin-config";
+      var PUBLIC_CONFIG_FALLBACK_URL = "tv-config.json";
+      var PASSWORD_STORAGE_KEY = "wall-tv-admin-password";
+      var config = { devices: {} };
+      var deviceList = document.getElementById("deviceList");
+      var jsonPreview = document.getElementById("jsonPreview");
+      var statusEl = document.getElementById("status");
+      var passwordInput = document.getElementById("passwordInput");
+
+      function setStatus(message, tone) {
+        statusEl.textContent = message;
+        statusEl.style.color = tone === "error" ? "#a12c2c" : tone === "success" ? "#1d7b4b" : "";
+      }
+
+      function ensureShape(input) {
+        if (!input || typeof input !== "object") {
+          return { devices: {} };
+        }
+
+        if (input.devices && typeof input.devices === "object") {
+          return { devices: input.devices };
+        }
+
+        return { devices: input };
+      }
+
+      function createEmptyDevice(id, name, deviceType) {
+        return {
+          name: name || id,
+          deviceType: deviceType || "tv",
+          label: name || id,
+          media: {
+            type: "video",
+            url: "",
+            version: "1",
+            poster: ""
+          }
+        };
+      }
+
+      function render() {
+        var entries = Object.keys(config.devices || {});
+        deviceList.innerHTML = "";
+
+        if (!entries.length) {
+          var empty = document.createElement("div");
+          empty.className = "device-card";
+          empty.textContent = "Nenhuma TV cadastrada ainda.";
+          deviceList.appendChild(empty);
+        }
+
+        entries.forEach(function (id) {
+          var device = config.devices[id];
+          var card = document.createElement("div");
+          card.className = "device-card";
+          card.innerHTML =
+            '<div class="device-head">' +
+              "<strong>" + escapeHtml(device.name || id) + "</strong>" +
+              '<span class="badge">' + escapeHtml(device.deviceType || "tv") + "</span>" +
+            "</div>" +
+            '<div class="meta">ID: <code>' + escapeHtml(id) + "</code></div>" +
+            '<div class="fields">' +
+              field("Nome", device.name || "", "name") +
+              field("Label exibida", device.label || "", "label") +
+              selectField("Tipo do dispositivo", device.deviceType || "tv", "deviceType", [
+                { value: "tv", label: "TV" },
+                { value: "outro", label: "Outro" }
+              ]) +
+              selectField("Tipo de midia", (device.media && device.media.type) || "video", "media.type", [
+                { value: "video", label: "Video" },
+                { value: "image", label: "Imagem" }
+              ]) +
+              field("URL da midia", (device.media && device.media.url) || "", "media.url") +
+              field("Poster opcional", (device.media && device.media.poster) || "", "media.poster") +
+              field("Versao", String((device.media && device.media.version) || "1"), "media.version") +
+            "</div>" +
+            '<div class="actions">' +
+              '<button class="danger" data-action="remove" data-id="' + escapeHtml(id) + '">Remover</button>' +
+            "</div>";
+
+          wireInputs(card, id);
+          deviceList.appendChild(card);
+        });
+
+        jsonPreview.value = JSON.stringify(config, null, 2);
+      }
+
+      function field(label, value, key) {
+        return '<label>' + escapeHtml(label) + '<input data-key="' + escapeHtml(key) + '" value="' + escapeHtml(value) + '"></label>';
+      }
+
+      function selectField(label, value, key, options) {
+        var html = '<label>' + escapeHtml(label) + '<select data-key="' + escapeHtml(key) + '">';
+        options.forEach(function (option) {
+          html += '<option value="' + escapeHtml(option.value) + '"' + (option.value === value ? " selected" : "") + ">" + escapeHtml(option.label) + "</option>";
+        });
+        html += "</select></label>";
+        return html;
+      }
+
+      function wireInputs(card, id) {
+        var inputs = card.querySelectorAll("[data-key]");
+        var removeBtn = card.querySelector('[data-action="remove"]');
+
+        inputs.forEach(function (input) {
+          input.addEventListener("input", function () {
+            updateValue(id, input.getAttribute("data-key"), input.value);
+          });
+          input.addEventListener("change", function () {
+            updateValue(id, input.getAttribute("data-key"), input.value);
+          });
+        });
+
+        removeBtn.addEventListener("click", function () {
+          delete config.devices[id];
+          render();
+          setStatus("TV removida", "success");
+        });
+      }
+
+      function updateValue(id, path, value) {
+        var parts = path.split(".");
+        var target = config.devices[id];
+        var i;
+
+        for (i = 0; i < parts.length - 1; i++) {
+          if (!target[parts[i]] || typeof target[parts[i]] !== "object") {
+            target[parts[i]] = {};
+          }
+          target = target[parts[i]];
+        }
+
+        target[parts[parts.length - 1]] = value;
+        jsonPreview.value = JSON.stringify(config, null, 2);
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function downloadJson() {
+        var blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement("a");
+        link.href = url;
+        link.download = "tv-config.json";
+        link.click();
+        URL.revokeObjectURL(url);
+        setStatus("Backup baixado", "success");
+      }
+
+      function getPassword() {
+        return (passwordInput.value || "").trim();
+      }
+
+      function storePassword() {
+        try {
+          window.sessionStorage.setItem(PASSWORD_STORAGE_KEY, getPassword());
+        } catch (error) {}
+      }
+
+      function restorePassword() {
+        try {
+          var saved = window.sessionStorage.getItem(PASSWORD_STORAGE_KEY) || "";
+          if (saved) {
+            passwordInput.value = saved;
+          }
+        } catch (error) {}
+      }
+
+      function requestOptions(method, includeBody) {
+        var password = getPassword();
+        if (!password) {
+          throw new Error("Informe a senha do painel");
+        }
+
+        storePassword();
+
+        var options = {
+          method: method,
+          headers: {
+            "Authorization": "Bearer " + password
+          }
+        };
+
+        if (includeBody) {
+          options.headers["Content-Type"] = "application/json";
+          options.body = JSON.stringify(config);
+        }
+
+        return options;
+      }
+
+      function parseApiResponse(response) {
+        return response.json().catch(function () {
+          return {};
+        }).then(function (data) {
+          if (!response.ok) {
+            throw new Error(data.error || "Falha na requisicao");
+          }
+          return data;
+        });
+      }
+
+      function loadFallbackConfig(reason) {
+        return fetch(PUBLIC_CONFIG_FALLBACK_URL + "?v=" + Date.now(), { cache: "no-store" })
+          .then(function (response) {
+            if (!response.ok) {
+              throw new Error(reason || "Nao foi possivel carregar a configuracao das TVs");
+            }
+            return response.json();
+          })
+          .then(function (data) {
+            config = ensureShape(data);
+            render();
+            setStatus(reason ? "Fallback local carregado: " + reason : "Fallback local carregado", "error");
+          })
+          .catch(function (error) {
+            setStatus(error.message || String(error), "error");
+          });
+      }
+
+      function loadRemote() {
+        var options;
+
+        try {
+          options = requestOptions("GET", false);
+        } catch (error) {
+          return loadFallbackConfig(error.message || String(error));
+        }
+
+        return fetch(ADMIN_API_URL, options)
+          .then(parseApiResponse)
+          .then(function (data) {
+            config = ensureShape(data);
+            render();
+            setStatus("Configuracao online carregada", "success");
+          })
+          .catch(function (error) {
+            return loadFallbackConfig(error.message || String(error));
+          });
+      }
+
+      function saveRemote() {
+        var options;
+
+        try {
+          options = requestOptions("POST", true);
+        } catch (error) {
+          setStatus(error.message || String(error), "error");
+          return;
+        }
+
+        fetch(ADMIN_API_URL, options)
+          .then(parseApiResponse)
+          .then(function (data) {
+            config = ensureShape(data);
+            render();
+            setStatus("Configuracao salva online", "success");
+          })
+          .catch(function (error) {
+            setStatus(error.message || String(error), "error");
+          });
+      }
+
+      document.getElementById("addDeviceBtn").addEventListener("click", function () {
+        var id = document.getElementById("newId").value.trim();
+        var name = document.getElementById("newName").value.trim();
+        var deviceType = document.getElementById("newDeviceType").value;
+
+        if (!id) {
+          setStatus("Informe o ID da TV", "error");
+          return;
+        }
+
+        if (!config.devices) {
+          config.devices = {};
+        }
+
+        if (config.devices[id]) {
+          setStatus("Ja existe uma TV com este ID", "error");
+          return;
+        }
+
+        config.devices[id] = createEmptyDevice(id, name, deviceType);
+        document.getElementById("newId").value = "";
+        document.getElementById("newName").value = "";
+        render();
+        setStatus("TV adicionada", "success");
+      });
+
+      passwordInput.addEventListener("change", storePassword);
+      document.getElementById("downloadBtn").addEventListener("click", downloadJson);
+      document.getElementById("loadRemoteBtn").addEventListener("click", loadRemote);
+      document.getElementById("saveRemoteBtn").addEventListener("click", saveRemote);
+
+      restorePassword();
+      loadRemote().then(function () {
+        if (!Object.keys(config.devices || {}).length) {
+          config = ensureShape({
+            devices: {
+              "default": createEmptyDevice("default", "TV Padrao", "tv")
+            }
+          });
+          render();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "devices": {
+    "default": {
+      "name": "TV Padrao",
+      "deviceType": "tv",
+      "label": "Conteudo padrao",
+      "media": {
+        "type": "video",
+        "url": "https://example.com/video.mp4",
+        "version": "1",
+        "poster": ""
+      }
+    },
+    "tv-sala": {
+      "name": "TV Sala",
+      "deviceType": "tv",
+      "label": "TV Sala Principal",
+      "media": {
+        "type": "image",
+        "url": "https://example.com/imagem.jpg",
+        "version": "1",
+        "poster": ""
+      }
+    }
+  }
+}

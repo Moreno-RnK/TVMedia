@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kiosk Player</title>
+  <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: #000;
+      color: #fff;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      position: relative;
+    }
+
+    #status {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.35;
+      background: rgba(0, 0, 0, 0.7);
+      white-space: pre-line;
+      transition: opacity 0.4s ease;
+    }
+
+    #status.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #content {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      background: #000;
+    }
+
+    video,
+    img {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+      margin: 0;
+      padding: 0;
+      background: #000;
+      object-fit: cover;
+    }
+  </style>
+</head>
+<body>
+  <div id="status">iniciando</div>
+  <div id="content"></div>
+
+  <script>
+    (function () {
+      var CONFIG_URL = "/api/tv-config";
+      var CONFIG_FALLBACK_URL = "tv-config.json";
+      var DEVICE_STORAGE_KEY = "wall-player-device-id";
+      var legacyMediaMap = {
+        1: { type: "video", src: "media/videocar.mp4", label: "Tablet 1", poster: "media/poster1.jpg" },
+        2: { type: "image", src: "media/imagem2.jpg", label: "Tablet 2" },
+        3: { type: "image", src: "media/imagem3.jpg", label: "Tablet 3" },
+        4: { type: "image", src: "media/imagem4.jpg", label: "Tablet 4" },
+        5: { type: "image", src: "media/imagem5.jpg", label: "Tablet 5" },
+        6: { type: "image", src: "media/imagem6.jpg", label: "Tablet 6" },
+        7: { type: "video", src: "media/videocar.mp4", label: "Tablet 7", poster: "media/poster7.jpg" },
+        8: { type: "image", src: "media/imagem8.jpg", label: "Tablet 8" },
+        9: { type: "image", src: "media/imagem9.jpg", label: "Tablet 9" }
+      };
+
+      var status = document.getElementById("status");
+      var content = document.getElementById("content");
+      var hideStatusTimer = null;
+
+      function setStatus(text) {
+        status.textContent = text;
+        status.className = "";
+      }
+
+      function logStatus(lines) {
+        setStatus(lines.join("\n"));
+      }
+
+      function hideStatusLater(ms) {
+        if (hideStatusTimer) {
+          clearTimeout(hideStatusTimer);
+        }
+        hideStatusTimer = setTimeout(function () {
+          status.className = "hidden";
+        }, ms || 3000);
+      }
+
+      function getParam(name) {
+        var q = (window.location.search || "").replace(/^\?/, "");
+        if (!q) {
+          return "";
+        }
+
+        var parts = q.split("&");
+        var i;
+        var pair;
+
+        for (i = 0; i < parts.length; i++) {
+          pair = parts[i].split("=");
+          if (pair[0] === name) {
+            return decodeURIComponent((pair[1] || "").replace(/\+/g, " "));
+          }
+        }
+        return "";
+      }
+
+      function detectDeviceId() {
+        var directDevice = getParam("device") || getParam("id") || getParam("tv");
+        if (directDevice) {
+          saveDeviceId(directDevice);
+          return String(directDevice);
+        }
+
+        var savedDevice = loadSavedDeviceId();
+        if (savedDevice) {
+          return savedDevice;
+        }
+
+        var raw = getParam("tablet");
+        if (!raw) {
+          raw = getParam("t");
+        }
+
+        if (raw) {
+          saveDeviceId(raw);
+          return String(raw);
+        }
+
+        var file = (window.location.pathname || "").split("/").pop().toLowerCase();
+        var matchDevice = file.match(/(?:device|tv)-([a-z0-9_-]+)\.html$/);
+        if (matchDevice) {
+          return matchDevice[1];
+        }
+
+        var matchTablet = file.match(/tablet(\d+)\.html$/);
+        if (matchTablet) {
+          return String(matchTablet[1]);
+        }
+
+        return "1";
+      }
+
+      function saveDeviceId(deviceId) {
+        try {
+          window.localStorage.setItem(DEVICE_STORAGE_KEY, String(deviceId));
+        } catch (error) {}
+      }
+
+      function loadSavedDeviceId() {
+        try {
+          return window.localStorage.getItem(DEVICE_STORAGE_KEY) || "";
+        } catch (error) {
+          return "";
+        }
+      }
+
+      function clearContent() {
+        content.innerHTML = "";
+      }
+
+      function showMessage(message) {
+        clearContent();
+
+        var box = document.createElement("div");
+        box.style.color = "#ffd166";
+        box.style.fontSize = "16px";
+        box.style.padding = "18px";
+        box.style.textAlign = "center";
+        box.style.position = "absolute";
+        box.style.top = "50%";
+        box.style.left = "50%";
+        box.style.transform = "translate(-50%, -50%)";
+        box.style.maxWidth = "90%";
+        box.style.background = "#111";
+        box.style.border = "1px solid #333";
+        box.style.lineHeight = "1.4";
+        box.textContent = message;
+        content.appendChild(box);
+      }
+
+      function showImage(item) {
+        clearContent();
+
+        var img = document.createElement("img");
+        img.src = item.src;
+        img.alt = item.label || "Imagem";
+        img.onerror = function () {
+          showMessage("Imagem nao carregou: " + item.src);
+        };
+
+        content.appendChild(img);
+
+        var lines = [];
+        if (typeof item._tablet !== "undefined") {
+          lines.push("dispositivo " + item._tablet);
+        }
+        if (item.label) {
+          lines.push(item.label);
+        }
+        lines.push("imagem carregando: " + item.src);
+
+        logStatus(lines);
+        hideStatusLater(3000);
+      }
+
+      function errorMessageFromVideo(video, item) {
+        var e = video.error;
+        var msg = "Erro do video";
+
+        if (e) {
+          var reason = "DESCONHECIDO";
+          if (e.code === 1) reason = "1 (aborto)";
+          if (e.code === 2) reason = "2 (rede)";
+          if (e.code === 3) reason = "3 (decodificacao)";
+          if (e.code === 4) reason = "4 (formato nao suportado)";
+          msg = "Erro do video: " + reason;
+        }
+
+        msg += " - " + item.src;
+
+        if (item.poster) {
+          showImage({
+            src: item.poster,
+            label: "Poster de " + item.label,
+            _tablet: item._tablet
+          });
+          setStatus(msg + "\nexibindo poster");
+          hideStatusLater(4000);
+          return;
+        }
+
+        showMessage(msg);
+        setStatus(msg);
+      }
+
+      function canPlayMp4() {
+        var test = document.createElement("video");
+        var codecs = 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
+        var result = test.canPlayType("video/mp4");
+        var result2 = test.canPlayType(codecs);
+
+        return {
+          plain: result || "nao",
+          codecs: result2 || "nao"
+        };
+      }
+
+      function showVideo(item) {
+        clearContent();
+
+        var video = document.createElement("video");
+        var support = canPlayMp4();
+
+        video.autoplay = true;
+        video.muted = true;
+        video.loop = true;
+        video.preload = "auto";
+        video.controls = false;
+        video.src = item.src;
+
+        video.setAttribute("autoplay", "autoplay");
+        video.setAttribute("muted", "muted");
+        video.setAttribute("loop", "loop");
+        video.setAttribute("playsinline", "playsinline");
+        video.setAttribute("webkit-playsinline", "webkit-playsinline");
+
+        if (item.poster) {
+          video.poster = item.poster;
+        }
+
+        video.onloadstart = function () {
+          logStatus([
+            "dispositivo " + item._tablet,
+            item.label,
+            "video src: " + item.src,
+            "canPlayType(mp4): " + support.plain,
+            "canPlayType(avc1/mp4a): " + support.codecs,
+            "iniciando..."
+          ]);
+        };
+
+        video.onloadedmetadata = function () {
+          logStatus([
+            "dispositivo " + item._tablet,
+            item.label,
+            "metadata ok",
+            "duracao: " + (isNaN(video.duration) ? "n/a" : Math.round(video.duration) + "s")
+          ]);
+        };
+
+        video.oncanplay = function () {
+          logStatus([
+            "dispositivo " + item._tablet,
+            item.label,
+            "pronto para tocar",
+            "tentando play..."
+          ]);
+
+          try {
+            video.play();
+
+            setTimeout(function () {
+              if (video.paused) {
+                logStatus([
+                  "dispositivo " + item._tablet,
+                  item.label,
+                  "play nao iniciou automaticamente",
+                  "toque na tela se necessario"
+                ]);
+              }
+            }, 1000);
+          } catch (e2) {
+            logStatus([
+              "dispositivo " + item._tablet,
+              item.label,
+              "play() lancou excecao",
+              String(e2.message || e2)
+            ]);
+          }
+        };
+
+        video.onplaying = function () {
+          logStatus([
+            "dispositivo " + item._tablet,
+            item.label,
+            "reproduzindo"
+          ]);
+          hideStatusLater(3000);
+        };
+
+        video.onpause = function () {
+          logStatus([
+            "dispositivo " + item._tablet,
+            item.label,
+            "pausado"
+          ]);
+        };
+
+        video.onerror = function () {
+          errorMessageFromVideo(video, item);
+        };
+
+        video.addEventListener("stalled", function () {
+          logStatus([
+            "dispositivo " + item._tablet,
+            item.label,
+            "estabelecendo conexao..."
+          ]);
+        });
+
+        video.onclick = function () {
+          try {
+            video.play();
+          } catch (e3) {}
+        };
+
+        content.appendChild(video);
+        setStatus("carregando video");
+      }
+
+      function cloneMedia(item) {
+        return {
+          type: item.type,
+          src: item.src,
+          label: item.label,
+          poster: item.poster || "",
+          version: String(item.version || "0")
+        };
+      }
+
+      function normalizeConfigEntry(entry, deviceId) {
+        if (!entry || typeof entry !== "object") {
+          return null;
+        }
+
+        var media = entry.media && typeof entry.media === "object" ? entry.media : entry;
+        var items = Array.isArray(entry.items) ? entry.items : null;
+        var selectedItem = null;
+        var i;
+
+        if (items && items.length) {
+          for (i = 0; i < items.length; i++) {
+            if (items[i] && items[i].enabled !== false) {
+              selectedItem = items[i];
+              break;
+            }
+          }
+          media = selectedItem || items[0];
+        }
+
+        if (!media || !media.url) {
+          return null;
+        }
+
+        return {
+          type: String(media.type || "video").toLowerCase(),
+          src: media.url,
+          label: entry.label || entry.name || media.label || ("Dispositivo " + deviceId),
+          poster: media.poster || "",
+          version: String(media.version || entry.version || "0")
+        };
+      }
+
+      function resolveConfigMedia(config, deviceId) {
+        if (!config || typeof config !== "object") {
+          return null;
+        }
+
+        var devices = config.devices && typeof config.devices === "object"
+          ? config.devices
+          : config;
+
+        var exact = normalizeConfigEntry(devices[deviceId], deviceId);
+        if (exact) {
+          return exact;
+        }
+
+        var fallback = normalizeConfigEntry(devices["default"], "default");
+        if (fallback) {
+          return fallback;
+        }
+
+        return null;
+      }
+
+      function resolveLegacyMedia(deviceId) {
+        var numericId = parseInt(deviceId, 10);
+        if (!isNaN(numericId) && legacyMediaMap[numericId]) {
+          return cloneMedia(legacyMediaMap[numericId]);
+        }
+        return null;
+      }
+
+      function fetchJson(url) {
+        return fetch(url + (url.indexOf("?") === -1 ? "?v=" : "&v=") + Date.now(), { cache: "no-store" })
+          .then(function (response) {
+            if (!response.ok) {
+              throw new Error("Nao foi possivel carregar " + url);
+            }
+            return response.json();
+          });
+      }
+
+      function loadMedia(deviceId) {
+        return fetchJson(CONFIG_URL)
+          .catch(function () {
+            return fetchJson(CONFIG_FALLBACK_URL);
+          })
+          .then(function (config) {
+            return resolveConfigMedia(config, deviceId) || resolveLegacyMedia(deviceId);
+          })
+          .catch(function () {
+            return resolveLegacyMedia(deviceId);
+          });
+      }
+
+      function main() {
+        var deviceId = detectDeviceId();
+
+        loadMedia(deviceId)
+          .then(function (media) {
+            if (!media) {
+              showMessage("Dispositivo nao configurado: " + deviceId);
+              setStatus("dispositivo invalido");
+              return;
+            }
+
+            media._tablet = deviceId;
+
+            if (media.type === "video") {
+              showVideo(media);
+            } else {
+              showImage(media);
+            }
+          })
+          .catch(function (error) {
+            showMessage("Erro ao carregar configuracao");
+            setStatus(String(error && error.message ? error.message : error));
+          });
+      }
+
+      main();
+    })();
+  </script>
+</body>
+</html>
