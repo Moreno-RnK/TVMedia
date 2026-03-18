@@ -639,6 +639,7 @@
         upload("tv-media/" + id + "/" + Date.now() + "-" + safeName, file, {
           access: "public",
           handleUploadUrl: UPLOAD_API_URL,
+          clientPayload: password,
           onUploadProgress: function (progressEvent) {
             if (progressEvent && typeof progressEvent.percentage === "number") {
               setUploadState(id, "Upload " + Math.round(progressEvent.percentage) + "%", "");
