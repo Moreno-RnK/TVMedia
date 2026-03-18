@@ -66,6 +66,7 @@ export default async function handler(request, response) {
             "video/webm"
           ],
           addRandomSuffix: true,
+          allowOverwrite: true,
           tokenPayload: JSON.stringify({ pathname: pathname })
         };
       },
