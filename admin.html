@@ -226,6 +226,59 @@
       min-height: 16px;
     }
 
+    .section-title {
+      margin: 18px 0 10px;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .playlist-panel {
+      margin-top: 16px;
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .playlist-upload {
+      display: grid;
+      gap: 10px;
+      border: 1px dashed var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      background: #fffdf8;
+    }
+
+    .playlist-item {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      background: #fffdfa;
+      display: grid;
+      gap: 10px;
+    }
+
+    .playlist-item-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .playlist-item-head strong {
+      font-size: 14px;
+    }
+
+    .playlist-empty {
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      color: var(--muted);
+      background: #fffdf8;
+      font-size: 13px;
+    }
+
     @media (max-width: 720px) {
       .toolbar .status {
         margin-left: 0;
@@ -335,8 +388,104 @@
             url: "",
             version: "1",
             poster: ""
-          }
+          },
+          playlist: []
         };
+      }
+
+      function createPlaylistItem(type) {
+        return {
+          id: "item-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8),
+          name: "",
+          type: type || "image",
+          url: "",
+          poster: "",
+          durationSeconds: 8
+        };
+      }
+
+      function ensureDeviceDefaults(device) {
+        if (!device || typeof device !== "object") {
+          device = createEmptyDevice("tv", "TV", "tv");
+        }
+
+        if (!device.media || typeof device.media !== "object") {
+          device.media = {
+            type: "video",
+            url: "",
+            version: "1",
+            poster: ""
+          };
+        }
+
+        if (!Array.isArray(device.playlist)) {
+          device.playlist = [];
+        }
+
+        device.playlist = device.playlist.map(function (item, index) {
+          var safeItem = item && typeof item === "object" ? item : {};
+          return {
+            id: safeItem.id || ("item-" + index + "-" + Math.random().toString(36).slice(2, 8)),
+            name: safeItem.name || "",
+            type: safeItem.type || "image",
+            url: safeItem.url || "",
+            poster: safeItem.poster || "",
+            durationSeconds: safeItem.durationSeconds || 8
+          };
+        });
+
+        return device;
+      }
+
+      function markPlaylistDirty(id) {
+        ensureDeviceDefaults(config.devices[id]).playlistDirty = true;
+        jsonPreview.value = JSON.stringify(config, null, 2);
+      }
+
+      function clearPlaylistDirty(id) {
+        if (config.devices[id]) {
+          delete config.devices[id].playlistDirty;
+        }
+      }
+
+      function getDirtyPlaylistDeviceIds() {
+        return Object.keys(config.devices || {}).filter(function (id) {
+          var device = config.devices[id];
+          return device && device.playlistDirty && Array.isArray(device.playlist) && device.playlist.length > 0;
+        });
+      }
+
+      function buildConfigForSave() {
+        var next = { devices: {} };
+        Object.keys(config.devices || {}).forEach(function (id) {
+          var device = ensureDeviceDefaults(config.devices[id]);
+          next.devices[id] = {
+            name: device.name || id,
+            deviceType: device.deviceType || "tv",
+            label: device.label || id,
+            media: {
+              type: device.media.type || "video",
+              url: device.media.url || "",
+              version: String(device.media.version || "1"),
+              poster: device.media.poster || ""
+            },
+            playlist: (device.playlist || []).map(function (item) {
+              return {
+                id: item.id || ("item-" + Date.now()),
+                name: item.name || "",
+                type: item.type || "image",
+                url: item.url || "",
+                poster: item.poster || "",
+                durationSeconds: Number(item.durationSeconds || 8) || 8
+              };
+            }),
+            conversionStatus: device.conversionStatus || "",
+            conversionError: device.conversionError || "",
+            conversionJobId: device.conversionJobId || "",
+            conversionOriginalUrl: device.conversionOriginalUrl || ""
+          };
+        });
+        return next;
       }
 
       function render() {
@@ -351,7 +500,7 @@
         }
 
         entries.forEach(function (id) {
-          var device = config.devices[id];
+          var device = ensureDeviceDefaults(config.devices[id]);
           var media = device.media || {};
           var card = document.createElement("div");
           card.className = "device-card";
@@ -377,6 +526,7 @@
               field("Versao", String(media.version || "1"), "media.version") +
               field("Status de conversao", device.conversionStatus || "nenhum", "conversionStatus") +
             "</div>" +
+            '<div class="section-title">Midia final atual da TV</div>' +
             '<div class="upload-panel">' +
               '<label>Enviar arquivo de video ou imagem<input type="file" data-upload-input="' + escapeHtml(id) + '" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"></label>' +
               '<div class="upload-state" data-upload-state="' + escapeHtml(id) + '">Nenhum upload em andamento.</div>' +
@@ -385,6 +535,7 @@
                 '<button class="secondary" data-action="clear-media" data-id="' + escapeHtml(id) + '">Limpar midia</button>' +
               '</div>' +
             "</div>" +
+            renderPlaylistPanel(id, device.playlist || []) +
             '<div class="actions">' +
               '<button class="danger" data-action="remove" data-id="' + escapeHtml(id) + '">Remover TV</button>' +
             "</div>";
@@ -409,11 +560,67 @@
         return html;
       }
 
+      function renderPlaylistPanel(id, playlist) {
+        var itemsHtml = "";
+
+        if (!playlist.length) {
+          itemsHtml = '<div class="playlist-empty">Nenhum item na playlist ainda.</div>';
+        } else {
+          itemsHtml = playlist.map(function (item, index) {
+            return (
+              '<div class="playlist-item" data-playlist-item="' + escapeHtml(item.id) + '">' +
+                '<div class="playlist-item-head">' +
+                  '<strong>Item ' + (index + 1) + "</strong>" +
+                  '<span class="badge">' + escapeHtml(item.type || "image") + "</span>" +
+                "</div>" +
+                '<div class="fields">' +
+                  field("Nome do item", item.name || "", "playlist." + index + ".name") +
+                  selectField("Tipo", item.type || "image", "playlist." + index + ".type", [
+                    { value: "image", label: "Imagem" },
+                    { value: "video", label: "Video" }
+                  ]) +
+                  field("URL do item", item.url || "", "playlist." + index + ".url") +
+                  field("Poster opcional", item.poster || "", "playlist." + index + ".poster") +
+                  field("Duracao da imagem (segundos)", String(item.durationSeconds || 8), "playlist." + index + ".durationSeconds") +
+                "</div>" +
+                '<div class="actions">' +
+                  '<button class="secondary" data-action="move-playlist-up" data-id="' + escapeHtml(id) + '" data-index="' + index + '">Subir</button>' +
+                  '<button class="secondary" data-action="move-playlist-down" data-id="' + escapeHtml(id) + '" data-index="' + index + '">Descer</button>' +
+                  '<button class="danger" data-action="remove-playlist-item" data-id="' + escapeHtml(id) + '" data-index="' + index + '">Remover item</button>' +
+                "</div>" +
+              "</div>"
+            );
+          }).join("");
+        }
+
+        return (
+          '<div class="playlist-panel">' +
+            '<div class="section-title">Playlist da TV</div>' +
+            '<div class="playlist-upload">' +
+              '<label>Adicionar arquivo na playlist<input type="file" data-playlist-upload-input="' + escapeHtml(id) + '" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"></label>' +
+              '<div class="upload-state" data-playlist-upload-state="' + escapeHtml(id) + '">Nenhum item enviado para a playlist.</div>' +
+              '<div class="actions">' +
+                '<button class="secondary" data-action="playlist-upload" data-id="' + escapeHtml(id) + '">Enviar para playlist</button>' +
+                '<button class="secondary" data-action="add-playlist-image" data-id="' + escapeHtml(id) + '">Novo item de imagem</button>' +
+                '<button class="secondary" data-action="add-playlist-video" data-id="' + escapeHtml(id) + '">Novo item de video</button>' +
+              "</div>" +
+            "</div>" +
+            itemsHtml +
+          "</div>"
+        );
+      }
+
       function wireInputs(card, id) {
         var inputs = card.querySelectorAll("[data-key]");
         var removeBtn = card.querySelector('[data-action="remove"]');
         var uploadBtn = card.querySelector('[data-action="upload"]');
         var clearMediaBtn = card.querySelector('[data-action="clear-media"]');
+        var playlistUploadBtn = card.querySelector('[data-action="playlist-upload"]');
+        var addPlaylistImageBtn = card.querySelector('[data-action="add-playlist-image"]');
+        var addPlaylistVideoBtn = card.querySelector('[data-action="add-playlist-video"]');
+        var removePlaylistBtns = card.querySelectorAll('[data-action="remove-playlist-item"]');
+        var movePlaylistUpBtns = card.querySelectorAll('[data-action="move-playlist-up"]');
+        var movePlaylistDownBtns = card.querySelectorAll('[data-action="move-playlist-down"]');
 
         inputs.forEach(function (input) {
           input.addEventListener("input", function () {
@@ -435,6 +642,42 @@
         clearMediaBtn.addEventListener("click", function () {
           clearDeviceMedia(id);
         });
+
+        if (playlistUploadBtn) {
+          playlistUploadBtn.addEventListener("click", function () {
+            uploadPlaylistItem(id, playlistUploadBtn);
+          });
+        }
+
+        if (addPlaylistImageBtn) {
+          addPlaylistImageBtn.addEventListener("click", function () {
+            addPlaylistItem(id, "image");
+          });
+        }
+
+        if (addPlaylistVideoBtn) {
+          addPlaylistVideoBtn.addEventListener("click", function () {
+            addPlaylistItem(id, "video");
+          });
+        }
+
+        removePlaylistBtns.forEach(function (button) {
+          button.addEventListener("click", function () {
+            removePlaylistItem(id, Number(button.getAttribute("data-index")));
+          });
+        });
+
+        movePlaylistUpBtns.forEach(function (button) {
+          button.addEventListener("click", function () {
+            movePlaylistItem(id, Number(button.getAttribute("data-index")), -1);
+          });
+        });
+
+        movePlaylistDownBtns.forEach(function (button) {
+          button.addEventListener("click", function () {
+            movePlaylistItem(id, Number(button.getAttribute("data-index")), 1);
+          });
+        });
       }
 
       function updateValue(id, path, value) {
@@ -443,13 +686,19 @@
         var i;
 
         for (i = 0; i < parts.length - 1; i++) {
+          if (parts[i] === "playlist" && !Array.isArray(target[parts[i]])) {
+            target[parts[i]] = [];
+          }
           if (!target[parts[i]] || typeof target[parts[i]] !== "object") {
-            target[parts[i]] = {};
+            target[parts[i]] = String(Number(parts[i])) === parts[i] ? [] : {};
           }
           target = target[parts[i]];
         }
 
         target[parts[parts.length - 1]] = value;
+        if (parts[0] === "playlist") {
+          markPlaylistDirty(id);
+        }
         jsonPreview.value = JSON.stringify(config, null, 2);
       }
 
@@ -568,11 +817,26 @@
       }
 
       function saveRemote() {
-        requestJson(ADMIN_API_URL, "POST", config)
+        var dirtyPlaylistIds = getDirtyPlaylistDeviceIds();
+        var payload = buildConfigForSave();
+
+        requestJson(ADMIN_API_URL, "POST", payload)
           .then(function (data) {
             config = ensureShape(data);
-            render();
-            setStatus("Configuracao salva online", "success");
+            if (!dirtyPlaylistIds.length) {
+              render();
+              setStatus("Configuracao salva online", "success");
+              return;
+            }
+
+            return Promise.all(dirtyPlaylistIds.map(function (id) {
+              return createPlaylistRenderJob(id);
+            })).then(function () {
+              dirtyPlaylistIds.forEach(clearPlaylistDirty);
+              return loadRemote().then(function () {
+                setStatus("Configuracao salva e playlist enviada para renderizacao", "success");
+              });
+            });
           })
           .catch(function (error) {
             setStatus(error.message || String(error), "error");
@@ -587,8 +851,21 @@
         return document.querySelector('[data-upload-input="' + cssEscape(id) + '"]');
       }
 
+      function getPlaylistUploadInputElement(id) {
+        return document.querySelector('[data-playlist-upload-input="' + cssEscape(id) + '"]');
+      }
+
       function setUploadState(id, message, tone) {
         var element = getUploadStateElement(id);
+        if (!element) {
+          return;
+        }
+        element.textContent = message;
+        element.style.color = tone === "error" ? "#a12c2c" : tone === "success" ? "#1d7b4b" : "";
+      }
+
+      function setPlaylistUploadState(id, message, tone) {
+        var element = document.querySelector('[data-playlist-upload-state="' + cssEscape(id) + '"]');
         if (!element) {
           return;
         }
@@ -602,6 +879,43 @@
 
       function getCurrentMediaUrl(id) {
         return config.devices[id] && config.devices[id].media ? config.devices[id].media.url || "" : "";
+      }
+
+      function addPlaylistItem(id, type) {
+        var device = ensureDeviceDefaults(config.devices[id]);
+        device.playlist.push(createPlaylistItem(type));
+        markPlaylistDirty(id);
+        render();
+        setStatus("Item adicionado na playlist", "success");
+      }
+
+      function removePlaylistItem(id, index) {
+        var device = ensureDeviceDefaults(config.devices[id]);
+        var item = device.playlist[index];
+        if (!item) {
+          return;
+        }
+
+        device.playlist.splice(index, 1);
+        markPlaylistDirty(id);
+        render();
+        setStatus("Item removido da playlist", "success");
+      }
+
+      function movePlaylistItem(id, index, delta) {
+        var device = ensureDeviceDefaults(config.devices[id]);
+        var targetIndex = index + delta;
+
+        if (targetIndex < 0 || targetIndex >= device.playlist.length) {
+          return;
+        }
+
+        var item = device.playlist[index];
+        device.playlist.splice(index, 1);
+        device.playlist.splice(targetIndex, 0, item);
+        markPlaylistDirty(id);
+        render();
+        setStatus("Ordem da playlist atualizada", "success");
       }
 
       function removeBlobIfManaged(url) {
@@ -692,8 +1006,68 @@
           });
       }
 
+      function uploadPlaylistItem(id, button) {
+        var input = getPlaylistUploadInputElement(id);
+        var file = input && input.files ? input.files[0] : null;
+
+        if (!file) {
+          setStatus("Selecione um arquivo antes do upload", "error");
+          setPlaylistUploadState(id, "Selecione um arquivo para enviar.", "error");
+          return;
+        }
+
+        var password = getPassword();
+        if (!password) {
+          setStatus("Informe a senha do painel", "error");
+          setPlaylistUploadState(id, "Informe a senha para enviar arquivos.", "error");
+          return;
+        }
+
+        storePassword();
+        button.disabled = true;
+        setPlaylistUploadState(id, "Preparando upload da playlist...", "");
+
+        var safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+        var randomSuffix = Math.random().toString(36).slice(2, 10);
+        var device = ensureDeviceDefaults(config.devices[id]);
+
+        upload("tv-playlist/" + id + "/" + Date.now() + "-" + randomSuffix + "-" + safeName, file, {
+          access: "public",
+          handleUploadUrl: UPLOAD_API_URL,
+          clientPayload: password,
+          onUploadProgress: function (progressEvent) {
+            if (progressEvent && typeof progressEvent.percentage === "number") {
+              setPlaylistUploadState(id, "Upload " + Math.round(progressEvent.percentage) + "%", "");
+            }
+          }
+        })
+          .then(function (blob) {
+            var item = createPlaylistItem(file.type.indexOf("image/") === 0 ? "image" : "video");
+            item.name = safeName;
+            item.url = blob.url;
+            if (item.type === "image") {
+              item.durationSeconds = 8;
+            }
+            device.playlist.push(item);
+            markPlaylistDirty(id);
+            render();
+            setPlaylistUploadState(id, "Item enviado para a playlist.", "success");
+            setStatus("Item adicionado na playlist. Salve online para gerar o video final.", "success");
+          })
+          .catch(function (error) {
+            setPlaylistUploadState(id, error.message || String(error), "error");
+            setStatus(error.message || String(error), "error");
+          })
+          .finally(function () {
+            if (input) {
+              input.value = "";
+            }
+            button.disabled = false;
+          });
+      }
+
       function saveRemoteAfterUpload(id, oldUrl, newUrl) {
-        return requestJson(ADMIN_API_URL, "POST", config)
+        return requestJson(ADMIN_API_URL, "POST", buildConfigForSave())
           .then(function (data) {
             config = ensureShape(data);
             render();
@@ -714,6 +1088,13 @@
         });
       }
 
+      function createPlaylistRenderJob(id) {
+        return requestJson(CONVERSION_JOB_URL, "POST", {
+          deviceId: id,
+          jobType: "render_playlist"
+        });
+      }
+
       function clearDeviceMedia(id) {
         var existingUrl = getCurrentMediaUrl(id);
 
@@ -726,7 +1107,7 @@
         config.devices[id].media.version = String(Date.now());
         render();
 
-        requestJson(ADMIN_API_URL, "POST", config)
+        requestJson(ADMIN_API_URL, "POST", buildConfigForSave())
           .then(function (data) {
             config = ensureShape(data);
             render();
@@ -743,7 +1124,7 @@
         delete config.devices[id];
         render();
 
-        requestJson(ADMIN_API_URL, "POST", config)
+        requestJson(ADMIN_API_URL, "POST", buildConfigForSave())
           .then(function (data) {
             config = ensureShape(data);
             render();
