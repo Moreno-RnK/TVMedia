@@ -665,6 +665,10 @@
             }
 
             setUploadState(id, "Video enviado. Criando tarefa de conversao...", "");
+            config.devices[id].conversionStatus = "pending";
+            config.devices[id].conversionOriginalUrl = blob.url;
+            config.devices[id].conversionError = "";
+            jsonPreview.value = JSON.stringify(config, null, 2);
             return createConversionJob(id, blob.url, safeName)
               .then(function () {
                 setUploadState(id, "Video enviado para conversao automatica.", "success");
