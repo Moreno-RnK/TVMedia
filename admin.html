@@ -297,6 +297,7 @@
 
     (function () {
       var ADMIN_API_URL = "/api/tv-admin-config";
+      var CONVERSION_JOB_URL = "/api/tv-conversion-job";
       var DELETE_API_URL = "/api/tv-media-delete";
       var UPLOAD_API_URL = "/api/tv-upload";
       var PUBLIC_CONFIG_FALLBACK_URL = "tv-config.json";
@@ -374,6 +375,7 @@
               field("URL da midia", media.url || "", "media.url") +
               field("Poster opcional", media.poster || "", "media.poster") +
               field("Versao", String(media.version || "1"), "media.version") +
+              field("Status de conversao", device.conversionStatus || "nenhum", "conversionStatus") +
             "</div>" +
             '<div class="upload-panel">' +
               '<label>Enviar arquivo de video ou imagem<input type="file" data-upload-input="' + escapeHtml(id) + '" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"></label>' +
@@ -648,22 +650,34 @@
           }
         })
           .then(function (blob) {
-            if (!config.devices[id].media) {
-              config.devices[id].media = {};
+            if (file.type.indexOf("image/") === 0) {
+              if (!config.devices[id].media) {
+                config.devices[id].media = {};
+              }
+
+              config.devices[id].media.url = blob.url;
+              config.devices[id].media.type = "image";
+              config.devices[id].media.version = String(Date.now());
+              config.devices[id].conversionStatus = "";
+              jsonPreview.value = JSON.stringify(config, null, 2);
+
+              return saveRemoteAfterUpload(id, oldUrl, blob.url);
             }
 
-            config.devices[id].media.url = blob.url;
-            config.devices[id].media.type = file.type.indexOf("image/") === 0 ? "image" : "video";
-            config.devices[id].media.version = String(Date.now());
-            jsonPreview.value = JSON.stringify(config, null, 2);
-
-            return saveRemoteAfterUpload(id, oldUrl, blob.url);
+            setUploadState(id, "Video enviado. Criando tarefa de conversao...", "");
+            return createConversionJob(id, blob.url, safeName)
+              .then(function () {
+                setUploadState(id, "Video enviado para conversao automatica.", "success");
+                setStatus("Video enviado para conversao automatica", "success");
+              });
           })
           .then(function () {
             if (input) {
               input.value = "";
             }
-            setUploadState(id, "Upload concluido e salvo online.", "success");
+            if (file.type.indexOf("image/") === 0) {
+              setUploadState(id, "Upload concluido e salvo online.", "success");
+            }
           })
           .catch(function (error) {
             setUploadState(id, error.message || String(error), "error");
@@ -684,6 +698,16 @@
               return removeBlobIfManaged(oldUrl);
             }
           });
+      }
+
+      function createConversionJob(id, originalUrl, originalName) {
+        return requestJson(CONVERSION_JOB_URL, "POST", {
+          deviceId: id,
+          originalUrl: originalUrl,
+          originalName: originalName
+        }).then(function () {
+          return loadRemote();
+        });
       }
 
       function clearDeviceMedia(id) {
