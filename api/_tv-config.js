@@ -56,6 +56,30 @@ export async function saveTvConfig(config) {
   return normalized;
 }
 
+export async function updateDeviceConfig(deviceId, updater) {
+  const config = await readTvConfig();
+  const devices = config.devices && typeof config.devices === "object" ? config.devices : {};
+  const currentDevice = devices[deviceId] && typeof devices[deviceId] === "object"
+    ? devices[deviceId]
+    : {
+        name: deviceId,
+        deviceType: "tv",
+        label: deviceId,
+        media: {
+          type: "video",
+          url: "",
+          version: "1",
+          poster: ""
+        }
+      };
+
+  const updatedDevice = updater(currentDevice) || currentDevice;
+  devices[deviceId] = updatedDevice;
+  config.devices = devices;
+  await saveTvConfig(config);
+  return config;
+}
+
 export function normalizeTvConfig(input) {
   const base = input && typeof input === "object" ? input : {};
   const devices = base.devices && typeof base.devices === "object" ? base.devices : {};
