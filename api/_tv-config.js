@@ -14,7 +14,8 @@ export function defaultTvConfig() {
           url: "",
           version: "1",
           poster: ""
-        }
+        },
+        playlist: []
       }
     }
   };
@@ -70,7 +71,8 @@ export async function updateDeviceConfig(deviceId, updater) {
           url: "",
           version: "1",
           poster: ""
-        }
+        },
+        playlist: []
       };
 
   const updatedDevice = updater(currentDevice) || currentDevice;
@@ -83,7 +85,40 @@ export async function updateDeviceConfig(deviceId, updater) {
 export function normalizeTvConfig(input) {
   const base = input && typeof input === "object" ? input : {};
   const devices = base.devices && typeof base.devices === "object" ? base.devices : {};
-  return { devices };
+  const normalizedDevices = {};
+
+  Object.keys(devices).forEach((deviceId) => {
+    const device = devices[deviceId] && typeof devices[deviceId] === "object" ? devices[deviceId] : {};
+    const media = device.media && typeof device.media === "object"
+      ? device.media
+      : {
+          type: "video",
+          url: "",
+          version: "1",
+          poster: ""
+        };
+    const playlist = Array.isArray(device.playlist)
+      ? device.playlist.map((item) => {
+          const safeItem = item && typeof item === "object" ? item : {};
+          return {
+            id: safeItem.id || "",
+            name: safeItem.name || "",
+            type: safeItem.type || "image",
+            url: safeItem.url || "",
+            poster: safeItem.poster || "",
+            durationSeconds: Number(safeItem.durationSeconds || 8) || 8
+          };
+        })
+      : [];
+
+    normalizedDevices[deviceId] = {
+      ...device,
+      media,
+      playlist
+    };
+  });
+
+  return { devices: normalizedDevices };
 }
 
 export function isAuthorized(request) {

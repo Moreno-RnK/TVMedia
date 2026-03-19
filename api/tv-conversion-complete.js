@@ -64,7 +64,7 @@ export default async function handler(request, response) {
 
     await saveConversionJobs(nextJobs);
 
-    if (job.originalUrl && isBlobUrl(job.originalUrl)) {
+    if (job.type !== "render_playlist" && job.originalUrl && isBlobUrl(job.originalUrl)) {
       del(job.originalUrl).catch(() => {});
     }
 
