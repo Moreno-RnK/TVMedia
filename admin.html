@@ -860,6 +860,7 @@
           var media = device.media || {};
           var card = document.createElement("div");
           card.className = "device-card";
+          card.setAttribute("data-device-id", id);
           card.innerHTML =
             '<div class="device-head">' +
               "<strong>" + escapeHtml(device.name || id) + "</strong>" +
@@ -1243,6 +1244,7 @@
       }
 
       function saveRemote() {
+        syncVisiblePlaylistOrder();
         var dirtyPlaylistIds = getDirtyPlaylistDeviceIds();
         var payload = buildConfigForSave();
 
@@ -1300,6 +1302,49 @@
 
       function cssEscape(value) {
         return String(value).replace(/"/g, '\\"');
+      }
+
+      function syncVisiblePlaylistOrder() {
+        var cards = deviceList.querySelectorAll("[data-device-id]");
+
+        cards.forEach(function (card) {
+          var id = card.getAttribute("data-device-id");
+          var device = config.devices[id];
+          var playlist = device && Array.isArray(device.playlist) ? device.playlist : null;
+          var orderedIds;
+          var orderedItems;
+          var remainingItems;
+
+          if (!playlist || !playlist.length) {
+            return;
+          }
+
+          orderedIds = Array.prototype.map.call(
+            card.querySelectorAll("[data-playlist-item]"),
+            function (itemNode) {
+              return itemNode.getAttribute("data-playlist-item");
+            }
+          );
+
+          if (!orderedIds.length) {
+            return;
+          }
+
+          orderedItems = orderedIds.map(function (itemId) {
+            var index = playlist.findIndex(function (item) {
+              return item && item.id === itemId;
+            });
+            return index >= 0 ? playlist[index] : null;
+          }).filter(Boolean);
+
+          remainingItems = playlist.filter(function (item) {
+            return orderedIds.indexOf(item && item.id) === -1;
+          });
+
+          device.playlist = orderedItems.concat(remainingItems);
+        });
+
+        jsonPreview.value = JSON.stringify(config, null, 2);
       }
 
       function getCurrentMediaUrl(id) {
