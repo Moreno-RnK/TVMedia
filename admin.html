@@ -1259,9 +1259,8 @@
               return createPlaylistRenderJob(id);
             })).then(function () {
               dirtyPlaylistIds.forEach(clearPlaylistDirty);
-              return loadRemote().then(function () {
-                setStatus("Configuracao salva e playlist enviada para renderizacao", "success");
-              });
+              render();
+              setStatus("Configuracao salva. A playlist foi enviada para renderizacao e o agente local deve detectar a tarefa em alguns segundos.", "success");
             });
           })
           .catch(function (error) {
