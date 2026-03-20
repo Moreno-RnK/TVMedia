@@ -2,6 +2,18 @@ import { list, put } from "@vercel/blob";
 
 const CONFIG_PATH = "tv/config.json";
 
+function pickLatestBlob(blobs) {
+  if (!Array.isArray(blobs) || !blobs.length) {
+    return null;
+  }
+
+  return blobs.slice().sort((left, right) => {
+    const leftTime = new Date(left.uploadedAt || left.createdAt || 0).getTime();
+    const rightTime = new Date(right.uploadedAt || right.createdAt || 0).getTime();
+    return rightTime - leftTime;
+  })[0];
+}
+
 export function defaultTvConfig() {
   return {
     devices: {
@@ -22,8 +34,8 @@ export function defaultTvConfig() {
 }
 
 export async function readTvConfig() {
-  const { blobs } = await list({ prefix: CONFIG_PATH, limit: 1 });
-  const blob = blobs && blobs[0];
+  const { blobs } = await list({ prefix: CONFIG_PATH, limit: 20 });
+  const blob = pickLatestBlob(blobs);
 
   if (!blob || !blob.url) {
     return defaultTvConfig();
