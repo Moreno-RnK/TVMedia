@@ -894,13 +894,19 @@
                 "</div>" +
               "</details>" +
             "</div>" +
-            '<div class="section-title">Mídia final atual da TV</div>' +
+            '<div class="section-title">Conteudo principal da TV</div>' +
             '<div class="upload-panel">' +
-              '<label>Enviar arquivo de vídeo ou imagem<input type="file" data-upload-input="' + escapeHtml(id) + '" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"></label>' +
-              '<div class="upload-state" data-upload-state="' + escapeHtml(id) + '">Nenhum upload em andamento.</div>' +
-              '<div class="actions">' +
-                '<button class="secondary" data-action="upload" data-id="' + escapeHtml(id) + '">Fazer upload</button>' +
-                '<button class="secondary" data-action="clear-media" data-id="' + escapeHtml(id) + '">Limpar mídia</button>' +
+              '<div class="upload-box primary-upload">' +
+                '<div class="upload-box-head">' +
+                  '<strong>Trocar conteudo principal</strong>' +
+                  '<span>Use esta area para substituir rapidamente o que a TV exibe agora.</span>' +
+                '</div>' +
+                '<label>Enviar arquivo de video ou imagem<input type="file" data-upload-input="' + escapeHtml(id) + '" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"></label>' +
+                '<div class="upload-state" data-upload-state="' + escapeHtml(id) + '">Nenhum upload em andamento.</div>' +
+                '<div class="actions">' +
+                  '<button class="primary" data-action="upload" data-id="' + escapeHtml(id) + '">Enviar conteudo</button>' +
+                  '<button class="secondary" data-action="clear-media" data-id="' + escapeHtml(id) + '">Limpar midia</button>' +
+                '</div>' +
               '</div>' +
             "</div>" +
             renderPlaylistPanel(id, device.playlist || []) +
@@ -1012,12 +1018,15 @@
         return (
           '<div class="playlist-panel">' +
             '<div class="section-title">Playlist da TV</div>' +
-            '<div class="playlist-upload">' +
+            '<div class="playlist-upload upload-box">' +
+              '<div class="upload-box-head">' +
+                '<strong>Adicionar arquivos na playlist</strong>' +
+                '<span>Cada arquivo enviado vira um item da sequencia. Depois e so organizar a ordem e salvar online.</span>' +
+              '</div>' +
               '<label>Adicionar arquivo na playlist<input type="file" data-playlist-upload-input="' + escapeHtml(id) + '" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"></label>' +
-              '<div class="playlist-help">Cada arquivo enviado entra como um item da playlist. Depois é só ordenar e salvar online.</div>' +
               '<div class="upload-state" data-playlist-upload-state="' + escapeHtml(id) + '">Nenhum item enviado para a playlist.</div>' +
               '<div class="actions">' +
-                '<button class="secondary" data-action="playlist-upload" data-id="' + escapeHtml(id) + '">Enviar para playlist</button>' +
+                '<button class="secondary" data-action="playlist-upload" data-id="' + escapeHtml(id) + '">Adicionar a playlist</button>' +
               "</div>" +
             "</div>" +
             itemsHtml +
