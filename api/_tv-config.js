@@ -2,18 +2,6 @@ import { list, put } from "@vercel/blob";
 
 const CONFIG_PATH = "tv/config.json";
 
-function pickLatestBlob(blobs) {
-  if (!Array.isArray(blobs) || !blobs.length) {
-    return null;
-  }
-
-  return blobs.slice().sort((left, right) => {
-    const leftTime = new Date(left.uploadedAt || left.createdAt || 0).getTime();
-    const rightTime = new Date(right.uploadedAt || right.createdAt || 0).getTime();
-    return rightTime - leftTime;
-  })[0];
-}
-
 export function defaultTvConfig() {
   return {
     devices: {
@@ -35,31 +23,55 @@ export function defaultTvConfig() {
 
 export async function readTvConfig() {
   const { blobs } = await list({ prefix: CONFIG_PATH, limit: 20 });
-  const blob = pickLatestBlob(blobs);
+  const candidates = Array.isArray(blobs) ? blobs.filter((blob) => blob && blob.url) : [];
 
-  if (!blob || !blob.url) {
+  if (!candidates.length) {
     return defaultTvConfig();
   }
 
-  const response = await fetch(blob.url, { cache: "no-store" });
-  if (!response.ok) {
-    throw new Error("Nao foi possivel ler a configuracao das TVs");
-  }
+  const loaded = await Promise.all(candidates.map(async (blob) => {
+    try {
+      const response = await fetch(blob.url, { cache: "no-store" });
+      if (!response.ok) {
+        return null;
+      }
 
-  const data = await response.json();
-  if (!data || typeof data !== "object") {
+      const data = await response.json();
+      if (!data || typeof data !== "object") {
+        return null;
+      }
+
+      const wrapped = data.devices && typeof data.devices === "object" ? data : { devices: data };
+      const stamp = new Date(
+        (wrapped._meta && wrapped._meta.updatedAt) ||
+        blob.uploadedAt ||
+        blob.createdAt ||
+        0
+      ).getTime();
+
+      return {
+        stamp,
+        data: wrapped
+      };
+    } catch (error) {
+      return null;
+    }
+  }));
+
+  const valid = loaded.filter(Boolean).sort((left, right) => right.stamp - left.stamp);
+  if (!valid.length) {
     return defaultTvConfig();
   }
 
-  if (data.devices && typeof data.devices === "object") {
-    return data;
-  }
-
-  return { devices: data };
+  return valid[0].data;
 }
 
 export async function saveTvConfig(config) {
   const normalized = normalizeTvConfig(config);
+  normalized._meta = {
+    ...(normalized._meta && typeof normalized._meta === "object" ? normalized._meta : {}),
+    updatedAt: new Date().toISOString()
+  };
   await put(CONFIG_PATH, JSON.stringify(normalized, null, 2), {
     access: "public",
     addRandomSuffix: false,
