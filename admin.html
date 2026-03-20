@@ -6,19 +6,19 @@
   <title>Painel das TVs</title>
   <style>
     :root {
-      --bg: #f3efe7;
-      --panel: #fffaf2;
+      --bg: #eef3f4;
+      --panel: #f8fbfb;
       --panel-strong: #ffffff;
-      --ink: #22201c;
-      --muted: #70685f;
-      --accent: #ad3f28;
-      --accent-soft: #f2d5cd;
-      --accent-soft-2: #f8e7e1;
-      --sand: #f4ecdf;
-      --border: #dccfbe;
+      --ink: #162126;
+      --muted: #61727a;
+      --accent: #0f5c73;
+      --accent-soft: #d9ebf1;
+      --accent-soft-2: #eef7fa;
+      --sand: #edf3f5;
+      --border: #d4e0e5;
       --success: #1d7b4b;
-      --danger: #a12c2c;
-      --shadow: 0 18px 40px rgba(34, 32, 28, 0.08);
+      --danger: #b13a3a;
+      --shadow: 0 18px 40px rgba(15, 37, 46, 0.08);
     }
 
     * {
@@ -29,8 +29,9 @@
       margin: 0;
       font-family: "Segoe UI", Arial, sans-serif;
       background:
-        radial-gradient(circle at top left, rgba(173, 63, 40, 0.12), transparent 30%),
-        linear-gradient(180deg, #f7f1e8 0%, #efe7db 100%);
+        radial-gradient(circle at top left, rgba(15, 92, 115, 0.10), transparent 28%),
+        radial-gradient(circle at top right, rgba(33, 127, 156, 0.08), transparent 22%),
+        linear-gradient(180deg, #f5f9fa 0%, #eaf1f3 100%);
       color: var(--ink);
     }
 
@@ -53,8 +54,8 @@
       padding: 28px;
       margin-bottom: 20px;
       background:
-        radial-gradient(circle at top right, rgba(173, 63, 40, 0.12), transparent 28%),
-        linear-gradient(180deg, #fffaf2 0%, #f8efe3 100%);
+        radial-gradient(circle at top right, rgba(15, 92, 115, 0.16), transparent 26%),
+        linear-gradient(180deg, #fbfefe 0%, #f2f8f9 100%);
     }
 
     .hero h1 {
@@ -92,7 +93,7 @@
       border: 1px solid var(--border);
       border-radius: 18px;
       padding: 14px;
-      background: rgba(255, 255, 255, 0.7);
+      background: rgba(255, 255, 255, 0.82);
     }
 
     .hero-stat strong {
@@ -120,7 +121,7 @@
       top: 0;
       z-index: 2;
       backdrop-filter: blur(10px);
-      background: rgba(255, 250, 242, 0.92);
+      background: rgba(248, 251, 251, 0.92);
     }
 
     .editor {
@@ -150,7 +151,7 @@
       inset: 0 auto auto 0;
       width: 100%;
       height: 4px;
-      background: linear-gradient(90deg, var(--accent) 0%, #d9a07a 100%);
+      background: linear-gradient(90deg, var(--accent) 0%, #58a8c0 100%);
       opacity: 0.75;
     }
 
@@ -185,7 +186,7 @@
       gap: 6px;
       padding: 6px 10px;
       border-radius: 999px;
-      background: var(--sand);
+      background: var(--accent-soft-2);
       color: var(--muted);
       font-size: 12px;
       font-weight: 600;
@@ -256,12 +257,12 @@
     }
 
     .secondary {
-      background: #e9dece;
-      color: var(--ink);
+      background: #e3eef2;
+      color: #184150;
     }
 
     .danger {
-      background: #f6d7d7;
+      background: #f7dddd;
       color: var(--danger);
     }
 
@@ -280,6 +281,36 @@
 
     .raw-json {
       margin-top: 24px;
+      display: grid;
+      gap: 10px;
+    }
+
+    details.dev-tools,
+    details.advanced-fields {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.72);
+      overflow: hidden;
+    }
+
+    details.dev-tools > summary,
+    details.advanced-fields > summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 14px 16px;
+      font-weight: 700;
+      color: var(--ink);
+      background: linear-gradient(180deg, rgba(238, 247, 250, 0.9), rgba(255, 255, 255, 0.8));
+    }
+
+    details.dev-tools > summary::-webkit-details-marker,
+    details.advanced-fields > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .dev-tools-body,
+    .advanced-fields-body {
+      padding: 14px 16px 16px;
       display: grid;
       gap: 10px;
     }
@@ -310,14 +341,14 @@
       border: 1px solid var(--border);
       border-radius: 18px;
       overflow: hidden;
-      background: linear-gradient(180deg, #fff 0%, #f8f1e5 100%);
+      background: linear-gradient(180deg, #fff 0%, #f0f6f7 100%);
     }
 
     .media-preview {
       aspect-ratio: 16 / 9;
       background:
-        linear-gradient(135deg, rgba(173, 63, 40, 0.18), rgba(173, 63, 40, 0.02)),
-        #f5ede1;
+        linear-gradient(135deg, rgba(15, 92, 115, 0.20), rgba(15, 92, 115, 0.03)),
+        #eef5f6;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -377,14 +408,14 @@
       border-radius: 16px;
       padding: 14px;
       background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(248, 241, 229, 0.9));
+        linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(239, 247, 249, 0.94));
     }
 
     .playlist-item {
       border: 1px solid var(--border);
       border-radius: 16px;
       padding: 14px;
-      background: #fffdfa;
+      background: #fbfefe;
       display: grid;
       gap: 10px;
     }
@@ -401,8 +432,8 @@
       overflow: hidden;
       aspect-ratio: 16 / 9;
       background:
-        linear-gradient(135deg, rgba(173, 63, 40, 0.18), rgba(173, 63, 40, 0.02)),
-        #f5ede1;
+        linear-gradient(135deg, rgba(15, 92, 115, 0.20), rgba(15, 92, 115, 0.03)),
+        #eef5f6;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -521,10 +552,13 @@
         </div>
       </div>
 
-      <div class="raw-json">
-        <label for="jsonPreview">Preview do JSON das TVs</label>
-        <textarea id="jsonPreview" readonly></textarea>
-      </div>
+      <details class="dev-tools raw-json">
+        <summary>Area tecnica / desenvolvimento</summary>
+        <div class="dev-tools-body">
+          <label for="jsonPreview">Preview do JSON das TVs</label>
+          <textarea id="jsonPreview" readonly></textarea>
+        </div>
+      </details>
     </section>
   </div>
 
@@ -707,23 +741,28 @@
             "</div>" +
             '<div class="fields">' +
               field("Nome", device.name || "", "name") +
-              field("Label exibida", device.label || "", "label") +
-              '<div class="field-grid-two">' +
-                selectField("Tipo do dispositivo", device.deviceType || "tv", "deviceType", [
-                  { value: "tv", label: "TV" },
-                  { value: "outro", label: "Outro" }
-                ]) +
-                selectField("Tipo de midia", media.type || "video", "media.type", [
-                  { value: "video", label: "Video" },
-                  { value: "image", label: "Imagem" }
-                ]) +
-              "</div>" +
-              field("URL da midia final", media.url || "", "media.url") +
-              field("Poster opcional", media.poster || "", "media.poster") +
-              '<div class="field-grid-two">' +
-                field("Versao", String(media.version || "1"), "media.version") +
-                field("Status de conversao", device.conversionStatus || "nenhum", "conversionStatus") +
-              "</div>" +
+              '<details class="advanced-fields">' +
+                '<summary>Opcoes avancadas desta TV</summary>' +
+                '<div class="advanced-fields-body">' +
+                  field("Label exibida", device.label || "", "label") +
+                  '<div class="field-grid-two">' +
+                    selectField("Tipo do dispositivo", device.deviceType || "tv", "deviceType", [
+                      { value: "tv", label: "TV" },
+                      { value: "outro", label: "Outro" }
+                    ]) +
+                    selectField("Tipo de midia", media.type || "video", "media.type", [
+                      { value: "video", label: "Video" },
+                      { value: "image", label: "Imagem" }
+                    ]) +
+                  "</div>" +
+                  field("URL da midia final", media.url || "", "media.url") +
+                  field("Poster opcional", media.poster || "", "media.poster") +
+                  '<div class="field-grid-two">' +
+                    field("Versao", String(media.version || "1"), "media.version") +
+                    field("Status de conversao", device.conversionStatus || "nenhum", "conversionStatus") +
+                  "</div>" +
+                "</div>" +
+              "</details>" +
             "</div>" +
             '<div class="section-title">Midia final atual da TV</div>' +
             '<div class="upload-panel">' +
@@ -821,8 +860,13 @@
                       ]) +
                       field("Duracao da imagem (segundos)", String(item.durationSeconds || 8), "playlist." + index + ".durationSeconds") +
                     "</div>" +
-                    field("URL do item", item.url || "", "playlist." + index + ".url") +
-                    field("Poster opcional", item.poster || "", "playlist." + index + ".poster") +
+                    '<details class="advanced-fields">' +
+                      '<summary>Opcoes avancadas do item</summary>' +
+                      '<div class="advanced-fields-body">' +
+                        field("URL do item", item.url || "", "playlist." + index + ".url") +
+                        field("Poster opcional", item.poster || "", "playlist." + index + ".poster") +
+                      "</div>" +
+                    "</details>" +
                   "</div>" +
                 "</div>" +
                 '<div class="actions">' +
