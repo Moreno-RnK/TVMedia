@@ -13,6 +13,8 @@
       --muted: #70685f;
       --accent: #ad3f28;
       --accent-soft: #f2d5cd;
+      --accent-soft-2: #f8e7e1;
+      --sand: #f4ecdf;
       --border: #dccfbe;
       --success: #1d7b4b;
       --danger: #a12c2c;
@@ -50,6 +52,9 @@
     .hero {
       padding: 28px;
       margin-bottom: 20px;
+      background:
+        radial-gradient(circle at top right, rgba(173, 63, 40, 0.12), transparent 28%),
+        linear-gradient(180deg, #fffaf2 0%, #f8efe3 100%);
     }
 
     .hero h1 {
@@ -66,6 +71,44 @@
       color: var(--muted);
     }
 
+    .hero-copy {
+      max-width: 860px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.8fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .hero-stat {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.7);
+    }
+
+    .hero-stat strong {
+      display: block;
+      font-size: 24px;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .hero-stat span {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
     .toolbar {
       display: flex;
       flex-wrap: wrap;
@@ -73,6 +116,11 @@
       padding: 18px;
       margin-bottom: 20px;
       align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      backdrop-filter: blur(10px);
+      background: rgba(255, 250, 242, 0.92);
     }
 
     .editor {
@@ -91,6 +139,19 @@
       border: 1px solid var(--border);
       border-radius: 18px;
       padding: 18px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .device-card::before,
+    .new-device::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto auto 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, var(--accent) 0%, #d9a07a 100%);
+      opacity: 0.75;
     }
 
     .device-head {
@@ -118,8 +179,26 @@
       letter-spacing: 0.04em;
     }
 
+    .soft-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--sand);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
     .fields {
       display: grid;
+      gap: 10px;
+    }
+
+    .field-grid-two {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
     }
 
@@ -226,6 +305,56 @@
       min-height: 16px;
     }
 
+    .media-shell {
+      margin-top: 12px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      overflow: hidden;
+      background: linear-gradient(180deg, #fff 0%, #f8f1e5 100%);
+    }
+
+    .media-preview {
+      aspect-ratio: 16 / 9;
+      background:
+        linear-gradient(135deg, rgba(173, 63, 40, 0.18), rgba(173, 63, 40, 0.02)),
+        #f5ede1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-weight: 600;
+      overflow: hidden;
+    }
+
+    .media-preview img,
+    .playlist-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .media-preview video,
+    .playlist-preview video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      background: #000;
+    }
+
+    .media-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      padding: 12px 14px;
+      border-top: 1px solid rgba(220, 207, 190, 0.8);
+      background: rgba(255, 255, 255, 0.6);
+      font-size: 12px;
+      color: var(--muted);
+    }
+
     .section-title {
       margin: 18px 0 10px;
       font-size: 15px;
@@ -247,7 +376,8 @@
       border: 1px dashed var(--border);
       border-radius: 16px;
       padding: 14px;
-      background: #fffdf8;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(248, 241, 229, 0.9));
     }
 
     .playlist-item {
@@ -257,6 +387,34 @@
       background: #fffdfa;
       display: grid;
       gap: 10px;
+    }
+
+    .playlist-item-grid {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .playlist-preview {
+      border-radius: 14px;
+      overflow: hidden;
+      aspect-ratio: 16 / 9;
+      background:
+        linear-gradient(135deg, rgba(173, 63, 40, 0.18), rgba(173, 63, 40, 0.02)),
+        #f5ede1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .playlist-help {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: -2px;
     }
 
     .playlist-item-head {
@@ -280,6 +438,13 @@
     }
 
     @media (max-width: 720px) {
+      .hero-grid,
+      .hero-stats,
+      .field-grid-two,
+      .playlist-item-grid {
+        grid-template-columns: 1fr;
+      }
+
       .toolbar .status {
         margin-left: 0;
         text-align: left;
@@ -295,9 +460,27 @@
 <body>
   <div class="page">
     <section class="hero">
-      <h1>Painel das TVs</h1>
-      <p>A pessoa pode subir video ou imagem direto pela interface, salvar online e a TV busca tudo automaticamente.</p>
-      <div class="hint">Para cada TV, abra uma vez <code>index.html?device=tv-sala</code>. O navegador guarda o ID e tenta manter a midia em cache local para uso offline.</div>
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <h1>Painel das TVs</h1>
+          <p>A pessoa pode subir video ou imagem direto pela interface, montar uma playlist por TV e salvar online sem mexer em codigo.</p>
+          <div class="hint">Fluxo recomendado: adicione os arquivos na playlist, organize a ordem, ajuste a duracao das imagens e clique em <code>Salvar online</code>. O agente local gera um unico video final para a TV.</div>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <strong id="heroTvCount">0</strong>
+            <span>TVs</span>
+          </div>
+          <div class="hero-stat">
+            <strong id="heroPlaylistCount">0</strong>
+            <span>Itens</span>
+          </div>
+          <div class="hero-stat">
+            <strong id="heroPendingCount">0</strong>
+            <span>Pendencias</span>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section class="toolbar">
@@ -491,6 +674,7 @@
       function render() {
         var entries = Object.keys(config.devices || {});
         deviceList.innerHTML = "";
+        updateHeroStats(entries);
 
         if (!entries.length) {
           var empty = document.createElement("div");
@@ -510,21 +694,36 @@
               '<span class="badge">' + escapeHtml(device.deviceType || "tv") + "</span>" +
             "</div>" +
             '<div class="meta">ID: <code>' + escapeHtml(id) + "</code></div>" +
+            '<div class="actions">' +
+              '<span class="soft-badge">Playlist: ' + String((device.playlist || []).length) + ' item(ns)</span>' +
+              '<span class="soft-badge">Status: ' + escapeHtml(device.conversionStatus || "pronto") + "</span>" +
+            "</div>" +
+            '<div class="media-shell">' +
+              '<div class="media-preview">' + renderMediaPreview(media.url || "", media.type || "video", media.poster || "") + "</div>" +
+              '<div class="media-meta">' +
+                '<span>Midia final usada pela TV</span>' +
+                '<span>' + escapeHtml((media.type || "video").toUpperCase()) + "</span>" +
+              "</div>" +
+            "</div>" +
             '<div class="fields">' +
               field("Nome", device.name || "", "name") +
               field("Label exibida", device.label || "", "label") +
-              selectField("Tipo do dispositivo", device.deviceType || "tv", "deviceType", [
-                { value: "tv", label: "TV" },
-                { value: "outro", label: "Outro" }
-              ]) +
-              selectField("Tipo de midia", media.type || "video", "media.type", [
-                { value: "video", label: "Video" },
-                { value: "image", label: "Imagem" }
-              ]) +
-              field("URL da midia", media.url || "", "media.url") +
+              '<div class="field-grid-two">' +
+                selectField("Tipo do dispositivo", device.deviceType || "tv", "deviceType", [
+                  { value: "tv", label: "TV" },
+                  { value: "outro", label: "Outro" }
+                ]) +
+                selectField("Tipo de midia", media.type || "video", "media.type", [
+                  { value: "video", label: "Video" },
+                  { value: "image", label: "Imagem" }
+                ]) +
+              "</div>" +
+              field("URL da midia final", media.url || "", "media.url") +
               field("Poster opcional", media.poster || "", "media.poster") +
-              field("Versao", String(media.version || "1"), "media.version") +
-              field("Status de conversao", device.conversionStatus || "nenhum", "conversionStatus") +
+              '<div class="field-grid-two">' +
+                field("Versao", String(media.version || "1"), "media.version") +
+                field("Status de conversao", device.conversionStatus || "nenhum", "conversionStatus") +
+              "</div>" +
             "</div>" +
             '<div class="section-title">Midia final atual da TV</div>' +
             '<div class="upload-panel">' +
@@ -560,6 +759,44 @@
         return html;
       }
 
+      function isImageType(type, url) {
+        if (type === "image") {
+          return true;
+        }
+        return /\.(jpg|jpeg|png|gif|webp)$/i.test(String(url || ""));
+      }
+
+      function renderMediaPreview(url, type, poster) {
+        if (!url) {
+          return "<span>Sem midia final</span>";
+        }
+
+        if (isImageType(type, url)) {
+          return '<img src="' + escapeHtml(url) + '" alt="Preview">';
+        }
+
+        return '<video src="' + escapeHtml(url) + '" ' + (poster ? 'poster="' + escapeHtml(poster) + '" ' : "") + 'muted playsinline preload="metadata"></video>';
+      }
+
+      function updateHeroStats(entries) {
+        var deviceIds = entries || [];
+        var tvCount = deviceIds.length;
+        var playlistCount = 0;
+        var pendingCount = 0;
+
+        deviceIds.forEach(function (id) {
+          var device = ensureDeviceDefaults(config.devices[id]);
+          playlistCount += (device.playlist || []).length;
+          if (device.conversionStatus && device.conversionStatus !== "completed" && device.conversionStatus !== "nenhum") {
+            pendingCount += 1;
+          }
+        });
+
+        document.getElementById("heroTvCount").textContent = String(tvCount);
+        document.getElementById("heroPlaylistCount").textContent = String(playlistCount);
+        document.getElementById("heroPendingCount").textContent = String(pendingCount);
+      }
+
       function renderPlaylistPanel(id, playlist) {
         var itemsHtml = "";
 
@@ -573,15 +810,20 @@
                   '<strong>Item ' + (index + 1) + "</strong>" +
                   '<span class="badge">' + escapeHtml(item.type || "image") + "</span>" +
                 "</div>" +
-                '<div class="fields">' +
-                  field("Nome do item", item.name || "", "playlist." + index + ".name") +
-                  selectField("Tipo", item.type || "image", "playlist." + index + ".type", [
-                    { value: "image", label: "Imagem" },
-                    { value: "video", label: "Video" }
-                  ]) +
-                  field("URL do item", item.url || "", "playlist." + index + ".url") +
-                  field("Poster opcional", item.poster || "", "playlist." + index + ".poster") +
-                  field("Duracao da imagem (segundos)", String(item.durationSeconds || 8), "playlist." + index + ".durationSeconds") +
+                '<div class="playlist-item-grid">' +
+                  '<div class="playlist-preview">' + renderMediaPreview(item.url || "", item.type || "image", item.poster || "") + "</div>" +
+                  '<div class="fields">' +
+                    field("Nome do item", item.name || "", "playlist." + index + ".name") +
+                    '<div class="field-grid-two">' +
+                      selectField("Tipo", item.type || "image", "playlist." + index + ".type", [
+                        { value: "image", label: "Imagem" },
+                        { value: "video", label: "Video" }
+                      ]) +
+                      field("Duracao da imagem (segundos)", String(item.durationSeconds || 8), "playlist." + index + ".durationSeconds") +
+                    "</div>" +
+                    field("URL do item", item.url || "", "playlist." + index + ".url") +
+                    field("Poster opcional", item.poster || "", "playlist." + index + ".poster") +
+                  "</div>" +
                 "</div>" +
                 '<div class="actions">' +
                   '<button class="secondary" data-action="move-playlist-up" data-id="' + escapeHtml(id) + '" data-index="' + index + '">Subir</button>' +
@@ -598,11 +840,10 @@
             '<div class="section-title">Playlist da TV</div>' +
             '<div class="playlist-upload">' +
               '<label>Adicionar arquivo na playlist<input type="file" data-playlist-upload-input="' + escapeHtml(id) + '" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"></label>' +
+              '<div class="playlist-help">Cada arquivo enviado entra como um item da playlist. Depois e so ordenar e salvar online.</div>' +
               '<div class="upload-state" data-playlist-upload-state="' + escapeHtml(id) + '">Nenhum item enviado para a playlist.</div>' +
               '<div class="actions">' +
                 '<button class="secondary" data-action="playlist-upload" data-id="' + escapeHtml(id) + '">Enviar para playlist</button>' +
-                '<button class="secondary" data-action="add-playlist-image" data-id="' + escapeHtml(id) + '">Novo item de imagem</button>' +
-                '<button class="secondary" data-action="add-playlist-video" data-id="' + escapeHtml(id) + '">Novo item de video</button>' +
               "</div>" +
             "</div>" +
             itemsHtml +
@@ -616,8 +857,6 @@
         var uploadBtn = card.querySelector('[data-action="upload"]');
         var clearMediaBtn = card.querySelector('[data-action="clear-media"]');
         var playlistUploadBtn = card.querySelector('[data-action="playlist-upload"]');
-        var addPlaylistImageBtn = card.querySelector('[data-action="add-playlist-image"]');
-        var addPlaylistVideoBtn = card.querySelector('[data-action="add-playlist-video"]');
         var removePlaylistBtns = card.querySelectorAll('[data-action="remove-playlist-item"]');
         var movePlaylistUpBtns = card.querySelectorAll('[data-action="move-playlist-up"]');
         var movePlaylistDownBtns = card.querySelectorAll('[data-action="move-playlist-down"]');
@@ -646,18 +885,6 @@
         if (playlistUploadBtn) {
           playlistUploadBtn.addEventListener("click", function () {
             uploadPlaylistItem(id, playlistUploadBtn);
-          });
-        }
-
-        if (addPlaylistImageBtn) {
-          addPlaylistImageBtn.addEventListener("click", function () {
-            addPlaylistItem(id, "image");
-          });
-        }
-
-        if (addPlaylistVideoBtn) {
-          addPlaylistVideoBtn.addEventListener("click", function () {
-            addPlaylistItem(id, "video");
           });
         }
 
@@ -879,14 +1106,6 @@
 
       function getCurrentMediaUrl(id) {
         return config.devices[id] && config.devices[id].media ? config.devices[id].media.url || "" : "";
-      }
-
-      function addPlaylistItem(id, type) {
-        var device = ensureDeviceDefaults(config.devices[id]);
-        device.playlist.push(createPlaylistItem(type));
-        markPlaylistDirty(id);
-        render();
-        setStatus("Item adicionado na playlist", "success");
       }
 
       function removePlaylistItem(id, index) {
