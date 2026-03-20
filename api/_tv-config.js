@@ -22,48 +22,26 @@ export function defaultTvConfig() {
 }
 
 export async function readTvConfig() {
-  const { blobs } = await list({ prefix: CONFIG_PATH, limit: 20 });
-  const candidates = Array.isArray(blobs) ? blobs.filter((blob) => blob && blob.url) : [];
-
-  if (!candidates.length) {
-    return defaultTvConfig();
-  }
-
-  const loaded = await Promise.all(candidates.map(async (blob) => {
-    try {
-      const response = await fetch(blob.url, { cache: "no-store" });
-      if (!response.ok) {
-        return null;
-      }
-
-      const data = await response.json();
-      if (!data || typeof data !== "object") {
-        return null;
-      }
-
-      const wrapped = data.devices && typeof data.devices === "object" ? data : { devices: data };
-      const stamp = new Date(
-        (wrapped._meta && wrapped._meta.updatedAt) ||
-        blob.uploadedAt ||
-        blob.createdAt ||
-        0
-      ).getTime();
-
-      return {
-        stamp,
-        data: wrapped
-      };
-    } catch (error) {
-      return null;
+  try {
+    const result = await list({ prefix: CONFIG_PATH, limit: 1 });
+    const blob = Array.isArray(result && result.blobs) ? result.blobs[0] : null;
+    if (!blob || !blob.url) {
+      return defaultTvConfig();
     }
-  }));
 
-  const valid = loaded.filter(Boolean).sort((left, right) => right.stamp - left.stamp);
-  if (!valid.length) {
+    const response = await fetch(blob.url, { cache: "no-store" });
+    if (!response.ok) {
+      return defaultTvConfig();
+    }
+    const data = await response.json();
+    if (!data || typeof data !== "object") {
+      return defaultTvConfig();
+    }
+    const wrapped = data.devices && typeof data.devices === "object" ? data : { devices: data };
+    return wrapped;
+  } catch (error) {
     return defaultTvConfig();
   }
-
-  return valid[0].data;
 }
 
 export async function saveTvConfig(config) {
@@ -74,8 +52,8 @@ export async function saveTvConfig(config) {
   };
   await put(CONFIG_PATH, JSON.stringify(normalized, null, 2), {
     access: "public",
-    addRandomSuffix: false,
     allowOverwrite: true,
+    addRandomSuffix: false,
     contentType: "application/json; charset=utf-8"
   });
   return normalized;
