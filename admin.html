@@ -798,7 +798,15 @@
       function getDirtyPlaylistDeviceIds() {
         return Object.keys(config.devices || {}).filter(function (id) {
           var device = config.devices[id];
-          return device && device.playlistDirty && Array.isArray(device.playlist) && device.playlist.length > 0;
+          if (!device || !Array.isArray(device.playlist) || !device.playlist.length) {
+            return false;
+          }
+
+          if (device.playlistDirty) {
+            return true;
+          }
+
+          return !device.media || !device.media.url;
         });
       }
 
@@ -1002,7 +1010,7 @@
                         { value: "image", label: "Imagem" },
                         { value: "video", label: "Vídeo" }
                       ]) +
-                      field("Duração da imagem (segundos)", String(item.durationSeconds || 8), "playlist." + index + ".durationSeconds") +
+                      renderPlaylistDurationField(item, index) +
                     "</div>" +
                     '<details class="advanced-fields">' +
                       '<summary>Opções avançadas do item</summary>' +
