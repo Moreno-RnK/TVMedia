@@ -2,18 +2,6 @@ import { list, put } from "@vercel/blob";
 
 const CONFIG_PATH = "tv/config.json";
 
-function pickLatestBlob(blobs) {
-  if (!Array.isArray(blobs) || !blobs.length) {
-    return null;
-  }
-
-  return blobs.slice().sort((left, right) => {
-    const leftTime = new Date(left.uploadedAt || left.createdAt || 0).getTime();
-    const rightTime = new Date(right.uploadedAt || right.createdAt || 0).getTime();
-    return rightTime - leftTime;
-  })[0];
-}
-
 export function defaultTvConfig() {
   return {
     devices: {
@@ -26,16 +14,15 @@ export function defaultTvConfig() {
           url: "",
           version: "1",
           poster: ""
-        },
-        playlist: []
+        }
       }
     }
   };
 }
 
 export async function readTvConfig() {
-  const { blobs } = await list({ prefix: CONFIG_PATH, limit: 20 });
-  const blob = pickLatestBlob(blobs);
+  const { blobs } = await list({ prefix: CONFIG_PATH, limit: 1 });
+  const blob = blobs && blobs[0];
 
   if (!blob || !blob.url) {
     return defaultTvConfig();
@@ -69,68 +56,10 @@ export async function saveTvConfig(config) {
   return normalized;
 }
 
-export async function updateDeviceConfig(deviceId, updater) {
-  const config = await readTvConfig();
-  const devices = config.devices && typeof config.devices === "object" ? config.devices : {};
-  const currentDevice = devices[deviceId] && typeof devices[deviceId] === "object"
-    ? devices[deviceId]
-    : {
-        name: deviceId,
-        deviceType: "tv",
-        label: deviceId,
-        media: {
-          type: "video",
-          url: "",
-          version: "1",
-          poster: ""
-        },
-        playlist: []
-      };
-
-  const updatedDevice = updater(currentDevice) || currentDevice;
-  devices[deviceId] = updatedDevice;
-  config.devices = devices;
-  await saveTvConfig(config);
-  return config;
-}
-
 export function normalizeTvConfig(input) {
   const base = input && typeof input === "object" ? input : {};
   const devices = base.devices && typeof base.devices === "object" ? base.devices : {};
-  const normalizedDevices = {};
-
-  Object.keys(devices).forEach((deviceId) => {
-    const device = devices[deviceId] && typeof devices[deviceId] === "object" ? devices[deviceId] : {};
-    const media = device.media && typeof device.media === "object"
-      ? device.media
-      : {
-          type: "video",
-          url: "",
-          version: "1",
-          poster: ""
-        };
-    const playlist = Array.isArray(device.playlist)
-      ? device.playlist.map((item) => {
-          const safeItem = item && typeof item === "object" ? item : {};
-          return {
-            id: safeItem.id || "",
-            name: safeItem.name || "",
-            type: safeItem.type || "image",
-            url: safeItem.url || "",
-            poster: safeItem.poster || "",
-            durationSeconds: Number(safeItem.durationSeconds || 8) || 8
-          };
-        })
-      : [];
-
-    normalizedDevices[deviceId] = {
-      ...device,
-      media,
-      playlist
-    };
-  });
-
-  return { devices: normalizedDevices };
+  return { devices };
 }
 
 export function isAuthorized(request) {
