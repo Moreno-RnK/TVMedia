@@ -953,6 +953,14 @@
         return '<video src="' + escapeHtml(url) + '" ' + (poster ? 'poster="' + escapeHtml(poster) + '" ' : "") + 'muted playsinline preload="metadata"></video>';
       }
 
+      function renderPlaylistDurationField(item, index) {
+        if (item.type !== "image") {
+          return "";
+        }
+
+        return field("Duracao da imagem (segundos)", String(item.durationSeconds || 8), "playlist." + index + ".durationSeconds");
+      }
+
       function updateHeroStats(entries) {
         var deviceIds = entries || [];
         var tvCount = deviceIds.length;
