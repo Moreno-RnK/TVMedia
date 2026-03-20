@@ -301,6 +301,31 @@
       font-weight: 700;
       color: var(--ink);
       background: linear-gradient(180deg, rgba(238, 247, 250, 0.9), rgba(255, 255, 255, 0.8));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    details.dev-tools > summary::after,
+    details.advanced-fields > summary::after {
+      content: "Mostrar";
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 6px 10px;
+      border-radius: 999px;
+    }
+
+    details.dev-tools[open] > summary::after,
+    details.advanced-fields[open] > summary::after {
+      content: "Ocultar";
+    }
+
+    details.dev-tools > summary:hover,
+    details.advanced-fields > summary:hover {
+      background: linear-gradient(180deg, rgba(224, 241, 247, 0.95), rgba(255, 255, 255, 0.9));
     }
 
     details.dev-tools > summary::-webkit-details-marker,
@@ -494,8 +519,8 @@
       <div class="hero-grid">
         <div class="hero-copy">
           <h1>Painel das TVs</h1>
-          <p>A pessoa pode subir video ou imagem direto pela interface, montar uma playlist por TV e salvar online sem mexer em codigo.</p>
-          <div class="hint">Fluxo recomendado: adicione os arquivos na playlist, organize a ordem, ajuste a duracao das imagens e clique em <code>Salvar online</code>. O agente local gera um unico video final para a TV.</div>
+          <p>A pessoa pode subir vídeo ou imagem direto pela interface, montar uma playlist por TV e salvar online sem mexer em código.</p>
+          <div class="hint">Fluxo recomendado: adicione os arquivos na playlist, organize a ordem, ajuste a duração das imagens e clique em <code>Salvar online</code>. O agente local gera um único vídeo final para a TV.</div>
         </div>
         <div class="hero-stats">
           <div class="hero-stat">
@@ -553,7 +578,7 @@
       </div>
 
       <details class="dev-tools raw-json">
-        <summary>Area tecnica / desenvolvimento</summary>
+        <summary>Área técnica / desenvolvimento</summary>
         <div class="dev-tools-body">
           <label for="jsonPreview">Preview do JSON das TVs</label>
           <textarea id="jsonPreview" readonly></textarea>
@@ -735,14 +760,14 @@
             '<div class="media-shell">' +
               '<div class="media-preview">' + renderMediaPreview(media.url || "", media.type || "video", media.poster || "") + "</div>" +
               '<div class="media-meta">' +
-                '<span>Midia final usada pela TV</span>' +
+                '<span>Mídia final usada pela TV</span>' +
                 '<span>' + escapeHtml((media.type || "video").toUpperCase()) + "</span>" +
               "</div>" +
             "</div>" +
             '<div class="fields">' +
               field("Nome", device.name || "", "name") +
               '<details class="advanced-fields">' +
-                '<summary>Opcoes avancadas desta TV</summary>' +
+                '<summary>Opções avançadas desta TV</summary>' +
                 '<div class="advanced-fields-body">' +
                   field("Label exibida", device.label || "", "label") +
                   '<div class="field-grid-two">' +
@@ -750,27 +775,27 @@
                       { value: "tv", label: "TV" },
                       { value: "outro", label: "Outro" }
                     ]) +
-                    selectField("Tipo de midia", media.type || "video", "media.type", [
-                      { value: "video", label: "Video" },
+                    selectField("Tipo de mídia", media.type || "video", "media.type", [
+                      { value: "video", label: "Vídeo" },
                       { value: "image", label: "Imagem" }
                     ]) +
                   "</div>" +
-                  field("URL da midia final", media.url || "", "media.url") +
+                  field("URL da mídia final", media.url || "", "media.url") +
                   field("Poster opcional", media.poster || "", "media.poster") +
                   '<div class="field-grid-two">' +
-                    field("Versao", String(media.version || "1"), "media.version") +
-                    field("Status de conversao", device.conversionStatus || "nenhum", "conversionStatus") +
+                    field("Versão", String(media.version || "1"), "media.version") +
+                    field("Status de conversão", device.conversionStatus || "nenhum", "conversionStatus") +
                   "</div>" +
                 "</div>" +
               "</details>" +
             "</div>" +
-            '<div class="section-title">Midia final atual da TV</div>' +
+            '<div class="section-title">Mídia final atual da TV</div>' +
             '<div class="upload-panel">' +
-              '<label>Enviar arquivo de video ou imagem<input type="file" data-upload-input="' + escapeHtml(id) + '" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"></label>' +
+              '<label>Enviar arquivo de vídeo ou imagem<input type="file" data-upload-input="' + escapeHtml(id) + '" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"></label>' +
               '<div class="upload-state" data-upload-state="' + escapeHtml(id) + '">Nenhum upload em andamento.</div>' +
               '<div class="actions">' +
                 '<button class="secondary" data-action="upload" data-id="' + escapeHtml(id) + '">Fazer upload</button>' +
-                '<button class="secondary" data-action="clear-media" data-id="' + escapeHtml(id) + '">Limpar midia</button>' +
+                '<button class="secondary" data-action="clear-media" data-id="' + escapeHtml(id) + '">Limpar mídia</button>' +
               '</div>' +
             "</div>" +
             renderPlaylistPanel(id, device.playlist || []) +
@@ -807,7 +832,7 @@
 
       function renderMediaPreview(url, type, poster) {
         if (!url) {
-          return "<span>Sem midia final</span>";
+          return "<span>Sem mídia final</span>";
         }
 
         if (isImageType(type, url)) {
@@ -856,12 +881,12 @@
                     '<div class="field-grid-two">' +
                       selectField("Tipo", item.type || "image", "playlist." + index + ".type", [
                         { value: "image", label: "Imagem" },
-                        { value: "video", label: "Video" }
+                        { value: "video", label: "Vídeo" }
                       ]) +
-                      field("Duracao da imagem (segundos)", String(item.durationSeconds || 8), "playlist." + index + ".durationSeconds") +
+                      field("Duração da imagem (segundos)", String(item.durationSeconds || 8), "playlist." + index + ".durationSeconds") +
                     "</div>" +
                     '<details class="advanced-fields">' +
-                      '<summary>Opcoes avancadas do item</summary>' +
+                      '<summary>Opções avançadas do item</summary>' +
                       '<div class="advanced-fields-body">' +
                         field("URL do item", item.url || "", "playlist." + index + ".url") +
                         field("Poster opcional", item.poster || "", "playlist." + index + ".poster") +
@@ -884,7 +909,7 @@
             '<div class="section-title">Playlist da TV</div>' +
             '<div class="playlist-upload">' +
               '<label>Adicionar arquivo na playlist<input type="file" data-playlist-upload-input="' + escapeHtml(id) + '" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"></label>' +
-              '<div class="playlist-help">Cada arquivo enviado entra como um item da playlist. Depois e so ordenar e salvar online.</div>' +
+              '<div class="playlist-help">Cada arquivo enviado entra como um item da playlist. Depois é só ordenar e salvar online.</div>' +
               '<div class="upload-state" data-playlist-upload-state="' + escapeHtml(id) + '">Nenhum item enviado para a playlist.</div>' +
               '<div class="actions">' +
                 '<button class="secondary" data-action="playlist-upload" data-id="' + escapeHtml(id) + '">Enviar para playlist</button>' +
